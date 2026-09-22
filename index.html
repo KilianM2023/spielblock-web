@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Spielblock">
+<meta name="theme-color" content="#1c1c2e">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<title>Spielblock</title>
+<style>
+:root{--bg:#1c1c2e;--card:#2a2a42;--card2:#35354f;--txt:#f2f2f7;--dim:#9b9bb4;--acc:#5b8cff;--ok:#30c86a;--bad:#ff5a5f;--gold:#ffc83d;--line:#3d3d5a}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",Helvetica,Arial,sans-serif;overscroll-behavior:none}
+body{display:flex;flex-direction:column;height:100dvh;-webkit-user-select:none;user-select:none}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+input{font:inherit;color:var(--txt);-webkit-user-select:text;user-select:text}
+#top{display:flex;align-items:center;gap:8px;padding:calc(env(safe-area-inset-top) + 8px) 12px 8px;min-height:52px}
+#top h1{flex:1;margin:0;font-size:20px;text-align:center}
+#top .side{width:64px}
+#back{color:var(--acc);font-size:17px;text-align:left;width:64px;padding:8px 0}
+#app{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:8px 16px calc(env(safe-area-inset-bottom) + 24px)}
+.card{background:var(--card);border-radius:18px;padding:16px;margin-bottom:12px}
+.big{display:flex;align-items:center;gap:16px;width:100%;text-align:left;background:var(--card);border-radius:20px;padding:20px;margin-bottom:12px;font-size:20px;font-weight:600}
+.big:active{background:var(--card2)}
+.big .ic{font-size:34px}
+.big small{display:block;font-size:14px;color:var(--dim);font-weight:400;margin-top:2px}
+.big[disabled]{opacity:.4}
+.btn{display:block;width:100%;padding:16px;border-radius:14px;background:var(--card2);font-weight:600;font-size:17px;text-align:center}
+.btn.ok{background:var(--ok);color:#06210f}
+.btn.bad{background:var(--bad);color:#fff}
+.btn.acc{background:var(--acc);color:#fff}
+.btn[disabled]{opacity:.4}
+.btn+.btn{margin-top:10px}
+label.l{display:block;color:var(--dim);font-size:13px;text-transform:uppercase;letter-spacing:.05em;margin:14px 0 8px}
+.seg{display:flex;gap:6px}
+.seg button{flex:1;padding:12px 0;border-radius:12px;background:var(--card2);font-weight:600;font-size:17px}
+.seg button.on{background:var(--acc)}
+.inp{width:100%;padding:14px;border-radius:12px;border:2px solid transparent;background:var(--card2);font-size:17px;margin-bottom:8px;outline:0}
+.inp:focus{border-color:var(--acc)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{padding:8px 14px;border-radius:99px;background:var(--card2);font-size:15px}
+.chip.used{opacity:.35}
+.sheet{border-radius:16px;overflow:hidden;background:var(--card);min-width:fit-content}
+.wrap{overflow-x:auto;border-radius:16px}
+.row{display:grid;grid-template-columns:112px repeat(var(--n),minmax(68px,1fr));border-bottom:1px solid var(--line)}
+.row>div,.row>button{padding:0 6px;min-height:46px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:17px;font-variant-numeric:tabular-nums}
+.row .lab{justify-content:flex-start;padding-left:12px;font-size:15px;position:sticky;left:0;background:var(--card);z-index:1}
+.row.head{position:sticky;top:0;z-index:3;background:var(--card2);font-weight:700}
+.row.head>div{background:var(--card2);font-size:14px;word-break:break-word;min-height:44px}
+.row.sec{background:var(--bg);color:var(--dim);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+.row.sec>div{min-height:28px;background:var(--bg);justify-content:flex-start;font-size:12px}
+.row.sum{background:#30304a;font-weight:700}
+.row.sum .lab{background:#30304a}
+.row.total{background:#3a4a86;font-weight:800;font-size:19px}
+.row.total .lab{background:#3a4a86}
+.row.total>div{font-size:20px}
+.cell{border-left:1px solid var(--line)}
+button.cell:active{background:var(--card2)}
+.cell.empty::after{content:"";width:26px;height:4px;border-radius:2px;background:var(--line)}
+.cell.zero{color:var(--dim);text-decoration:line-through}
+.hint{color:var(--dim);font-size:11px;display:block}
+.lead{color:var(--gold)}
+#modal,#win{position:fixed;inset:0;display:none;z-index:50}
+#modal.on,#win.on{display:block}
+#modal .bg,#win .bg{position:absolute;inset:0;background:rgba(0,0,0,.6)}
+#modal .box{position:absolute;left:0;right:0;bottom:0;background:var(--card);border-radius:24px 24px 0 0;padding:18px 16px calc(env(safe-area-inset-bottom) + 18px);max-height:85dvh;overflow:auto}
+.box h3{margin:0 0 4px;font-size:19px}
+.box p{margin:0 0 14px;color:var(--dim);font-size:14px}
+.grid{display:grid;gap:8px}
+.grid button{padding:14px 0;border-radius:12px;background:var(--card2);font-size:18px;font-weight:600}
+.grid button:active{background:var(--acc)}
+.grid button.z{background:#4a3040}
+#win .box{position:absolute;left:16px;right:16px;top:50%;transform:translateY(-50%);background:var(--card);border-radius:24px;padding:24px 20px;text-align:center;max-height:90dvh;overflow:auto}
+#win .trophy{font-size:64px}
+#win h2{margin:4px 0 2px;font-size:28px;color:var(--gold)}
+.rank{display:flex;justify-content:space-between;padding:10px 4px;border-bottom:1px solid var(--line);font-size:17px;text-align:left}
+.rank:last-of-type{border:0}
+canvas#conf{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:100}
+.stat{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:10px;text-align:center}
+.stat div{background:var(--card2);border-radius:12px;padding:8px 4px;font-size:20px;font-weight:700}
+.stat span{display:block;font-size:11px;color:var(--dim);font-weight:400;text-transform:uppercase}
+.name{font-size:19px;font-weight:700}
+.set{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+.set:last-child{border:0}
+.set input[type=number]{width:80px;padding:10px;border-radius:10px;border:0;background:var(--card2);text-align:center;font-size:17px}
+.tog{width:52px;height:32px;border-radius:99px;background:var(--card2);position:relative;flex:none}
+.tog::after{content:"";position:absolute;top:3px;left:3px;width:26px;height:26px;border-radius:50%;background:#fff;transition:.2s}
+.tog.on{background:var(--ok)}
+.tog.on::after{left:23px}
+.muted{color:var(--dim);font-size:14px;text-align:center;margin:10px 0}
+.hist{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px}
+.hist:last-child{border:0}
+</style>
+</head>
+<body>
+<div id="top"><button id="back">‹ Zurück</button><h1 id="title">Spielblock</h1><div class="side"></div></div>
+<div id="app"></div>
+<div id="modal"><div class="bg" data-act="closeModal"></div><div class="box" id="modalBox"></div></div>
+<div id="win"><div class="bg"></div><div class="box" id="winBox"></div></div>
+<canvas id="conf"></canvas>
+
+<script>
+'use strict';
+/* ---------- Helfer & Speicher ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const KEY = 'spielblock.v1';
+let DB = (() => { try { const d = JSON.parse(localStorage.getItem(KEY)); if (d) return d; } catch (e) {} return {sound: true, games: {}}; })();
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(DB)); } catch (e) {} };
+const G = k => DB.games[k] || (DB.games[k] = {current: null, history: [], settings: {}});
+
+/* ---------- Kniffel-Logik ---------- */
+const KDEF = {bonusThr: 63, bonusVal: 35, fh: 25, ks: 30, gs: 40, kn: 50, kb: false, kbVal: 100};
+const kset = () => ({...KDEF, ...G('kniffel').settings});
+const UPPER = [1,2,3,4,5,6].map(n => ({id: 'u' + n, label: ['Einser','Zweier','Dreier','Vierer','Fünfer','Sechser'][n-1], type: 'upper', face: n}));
+const LOWER = [
+  {id: '3k', label: 'Dreierpasch', type: 'sum', hint: 'alle Augen'},
+  {id: '4k', label: 'Viererpasch', type: 'sum', hint: 'alle Augen'},
+  {id: 'fh', label: 'Full House', type: 'fixed', key: 'fh'},
+  {id: 'ks', label: 'Kl. Straße', type: 'fixed', key: 'ks'},
+  {id: 'gs', label: 'Gr. Straße', type: 'fixed', key: 'gs'},
+  {id: 'kn', label: 'Kniffel', type: 'fixed', key: 'kn'},
+  {id: 'ch', label: 'Chance', type: 'sum', hint: 'alle Augen'},
+];
+const ALL = [...UPPER, ...LOWER];
+
+function calc(p, set) {
+  const up = UPPER.reduce((a, c) => a + (p.s[c.id] || 0), 0);
+  const bonus = up >= set.bonusThr ? set.bonusVal : 0;
+  const low = LOWER.reduce((a, c) => a + (p.s[c.id] || 0), 0);
+  const kb = set.kb ? (p.kb || 0) * set.kbVal : 0;
+  return {up, bonus, low, kb, total: up + bonus + low + kb};
+}
+const isDone = g => g.players.every(p => ALL.every(c => p.s[c.id] !== undefined));
+
+/* ---------- Statistik ---------- */
+function allNames() {
+  const m = {};
+  for (const k in DB.games) for (const g of DB.games[k].history) for (const p of g.players) m[p.name.toLowerCase()] = p.name;
+  return m;
+}
+function stats(k) {
+  const m = {};
+  for (const g of G(k).history) for (const p of g.players) {
+    const key = p.name.toLowerCase();
+    const s = m[key] || (m[key] = {name: p.name, games: 0, wins: 0, sum: 0, best: 0, kn: 0});
+    s.name = p.name; s.games++; s.sum += p.total; s.best = Math.max(s.best, p.total); s.kn += p.kn || 0;
+    if (g.winners.includes(key)) s.wins++;
+  }
+  return Object.values(m).sort((a, b) => b.wins - a.wins || b.sum / b.games - a.sum / a.games);
+}
+
+/* ---------- Navigation ---------- */
+const BACK = {kmenu: 'home', ksetup: 'kmenu', kgame: 'kmenu', kstats: 'kmenu', ksettings: 'kmenu'};
+const TITLE = {home: 'Spielblock', kmenu: 'Kniffel', ksetup: 'Neues Spiel', kgame: 'Kniffel', kstats: 'Statistik', ksettings: 'Einstellungen'};
+let view = 'home', setup = {n: 2, names: ['', '']};
+function go(v) { view = v; render(); $('#app').scrollTop = 0; }
+$('#back').onclick = () => { if (BACK[view]) go(BACK[view]); };
+
+function render() {
+  $('#title').textContent = TITLE[view];
+  $('#back').style.visibility = BACK[view] ? 'visible' : 'hidden';
+  $('#app').innerHTML = VIEWS[view]();
+}
+
+const VIEWS = {
+  home() {
+    return `<p class="muted" style="margin-top:0">Welches Spiel schreiben wir auf?</p>
+      <button class="big" data-act="go" data-v="kmenu"><span class="ic">🎲</span><span>Kniffel<small>Würfelblock mit 13 Feldern</small></span></button>
+      <button class="big" disabled><span class="ic">🃏</span><span>Cabo<small>kommt bald</small></span></button>
+      <button class="big" disabled><span class="ic">🎯</span><span>Tutto<small>kommt bald</small></span></button>`;
+  },
+  kmenu() {
+    const cur = G('kniffel').current;
+    return `<button class="big" data-act="newGame"><span class="ic">✨</span><span>Neues Spiel</span></button>
+      <button class="big" data-act="go" data-v="kgame" ${cur ? '' : 'disabled'}><span class="ic">▶️</span><span>Spiel fortsetzen<small>${cur ? esc(cur.players.map(p => p.name).join(', ')) : 'kein laufendes Spiel'}</small></span></button>
+      <button class="big" data-act="go" data-v="kstats"><span class="ic">📊</span><span>Statistik</span></button>
+      <button class="big" data-act="go" data-v="ksettings"><span class="ic">⚙️</span><span>Spieleinstellungen<small>Sonderregeln &amp; Werte</small></span></button>`;
+  },
+  ksetup() {
+    const known = allNames(), used = setup.names.map(n => n.trim().toLowerCase());
+    return `<label class="l">Anzahl Spieler</label>
+      <div class="seg">${[1,2,3,4,5,6].map(n => `<button class="${n === setup.n ? 'on' : ''}" data-act="cnt" data-n="${n}">${n}</button>`).join('')}</div>
+      <label class="l">Namen</label>
+      ${setup.names.map((n, i) => `<input class="inp" data-i="${i}" value="${esc(n)}" placeholder="Spieler ${i + 1}" maxlength="14" autocapitalize="words" autocomplete="off">`).join('')}
+      ${Object.keys(known).length ? `<label class="l">Bekannte Spieler (antippen)</label>
+      <div class="chips">${Object.entries(known).map(([k, n]) => `<button class="chip ${used.includes(k) ? 'used' : ''}" data-act="chip" data-name="${esc(n)}">${esc(n)}</button>`).join('')}</div>` : ''}
+      <div style="height:20px"></div>
+      <button class="btn ok" data-act="start">Spiel starten</button>`;
+  },
+  kgame() {
+    const g = G('kniffel').current; if (!g) return '<p class="muted">Kein laufendes Spiel.</p>';
+    const set = g.settings, n = g.players.length, res = g.players.map(p => calc(p, set));
+    const max = Math.max(...res.map(r => r.total));
+    const cell = (pi, c, val, extra = '') => `<button class="cell ${val === undefined ? 'empty' : val === 0 ? 'zero' : ''}" data-act="cell" data-p="${pi}" data-c="${c}">${val === undefined ? '' : val}${extra}</button>`;
+    const row = (c) => `<div class="row" style="--n:${n}"><div class="lab">${c.label}<span class="hint">${c.type === 'fixed' ? '' : ''}</span></div>${g.players.map((p, i) => cell(i, c.id, p.s[c.id])).join('')}</div>`;
+    const sum = (label, f, cls = 'sum') => `<div class="row ${cls}" style="--n:${n}"><div class="lab">${label}</div>${res.map((r, i) => `<div class="cell">${f(r, i)}</div>`).join('')}</div>`;
+    return `<div class="wrap"><div class="sheet">
+      <div class="row head" style="--n:${n}"><div class="lab"></div>${g.players.map((p, i) => `<div class="cell ${res[i].total === max && max > 0 ? 'lead' : ''}">${esc(p.name)}</div>`).join('')}</div>
+      <div class="row sec" style="--n:${n}"><div class="lab">Oberer Block</div></div>
+      ${UPPER.map(row).join('')}
+      ${sum('Summe oben', r => `${r.up}<span class="hint" style="margin-left:4px">/${set.bonusThr}</span>`)}
+      ${sum('Bonus', r => r.bonus ? '+' + r.bonus : '–')}
+      <div class="row sec" style="--n:${n}"><div class="lab">Unterer Block</div></div>
+      ${LOWER.map(row).join('')}
+      ${set.kb ? `<div class="row" style="--n:${n}"><div class="lab">Kniffel-Bonus</div>${g.players.map((p, i) => `<button class="cell" data-act="kb" data-p="${i}">${p.kb ? p.kb + '× ' : ''}<span class="hint" style="display:inline">${p.kb ? '= ' + p.kb * set.kbVal : '+'}</span></button>`).join('')}</div>` : ''}
+      ${sum('Summe unten', r => r.low + r.kb)}
+      ${sum('GESAMT', r => r.total, 'total')}
+    </div></div>
+    <div style="height:16px"></div>
+    <button class="btn" data-act="abort">Spiel abbrechen (nicht werten)</button>`;
+  },
+  kstats() {
+    const st = stats('kniffel'), h = G('kniffel').history;
+    if (!st.length) return '<p class="muted" style="margin-top:40px">Noch keine abgeschlossenen Spiele.</p>';
+    return st.map((s, i) => `<div class="card"><div class="name">${i === 0 ? '🏆 ' : ''}${esc(s.name)}</div>
+      <div class="stat"><div>${s.games}<span>Spiele</span></div><div>${s.wins}<span>Siege</span></div><div>${Math.round(100 * s.wins / s.games)}%<span>Siegquote</span></div>
+      <div>${Math.round(s.sum / s.games)}<span>Ø Punkte</span></div><div>${s.best}<span>Bestwert</span></div><div>${s.kn}<span>Kniffel</span></div></div></div>`).join('') +
+      `<label class="l">Letzte Spiele</label><div class="card">${h.slice(-10).reverse().map(g => `<div class="hist"><span>${new Date(g.date).toLocaleDateString('de-DE')}</span><span style="text-align:right">${g.players.slice().sort((a, b) => b.total - a.total).map(p => `${g.winners.includes(p.name.toLowerCase()) ? '🏆' : ''}${esc(p.name)} ${p.total}`).join(' · ')}</span></div>`).join('')}</div>
+      <button class="btn bad" data-act="resetStats" style="margin-top:8px">Statistik zurücksetzen</button>`;
+  },
+  ksettings() {
+    const s = kset();
+    const num = (k, l) => `<div class="set"><span>${l}</span><input type="number" inputmode="numeric" data-set="${k}" value="${s[k]}"></div>`;
+    return `<p class="muted" style="margin-top:0">Änderungen gelten für neue Spiele.</p>
+      <div class="card">${num('bonusThr', 'Bonus ab (oben)')}${num('bonusVal', 'Bonus-Punkte')}${num('fh', 'Full House')}${num('ks', 'Kleine Straße')}${num('gs', 'Große Straße')}${num('kn', 'Kniffel')}</div>
+      <div class="card"><div class="set"><span>Kniffel-Bonus<br><small style="color:var(--dim)">Extra-Punkte für jeden weiteren Kniffel</small></span><button class="tog ${s.kb ? 'on' : ''}" data-act="tog" data-k="kb"></button></div>
+      ${s.kb ? num('kbVal', 'Punkte pro Bonus') : ''}</div>
+      <div class="card"><div class="set"><span>Siegerton</span><button class="tog ${DB.sound ? 'on' : ''}" data-act="tog" data-k="sound"></button></div></div>
+      <button class="btn" data-act="defaults">Standardregeln wiederherstellen</button>`;
+  },
+};
+
+/* ---------- Aktionen ---------- */
+const ACT = {
+  go: d => go(d.v),
+  newGame() { setup = {n: 2, names: ['', '']}; go('ksetup'); },
+  cnt(d) { const n = +d.n; setup.names = Array.from({length: n}, (_, i) => setup.names[i] || ''); setup.n = n; render(); },
+  chip(d) {
+    if (setup.names.some(x => x.trim().toLowerCase() === d.name.toLowerCase())) return;
+    let i = setup.names.findIndex(x => !x.trim());
+    if (i < 0) return;
+    setup.names[i] = d.name; render();
+  },
+  start() {
+    const known = allNames(), names = setup.names.map((n, i) => n.trim() || 'Spieler ' + (i + 1)).map(n => known[n.toLowerCase()] || n);
+    if (new Set(names.map(n => n.toLowerCase())).size < names.length) return alert('Jeder Name darf nur einmal vorkommen.');
+    const cur = G('kniffel').current;
+    if (cur && !confirm('Es läuft noch ein Spiel. Es wird verworfen – trotzdem neu starten?')) return;
+    G('kniffel').current = {id: Date.now(), settings: kset(), players: names.map(name => ({name, s: {}, kb: 0}))};
+    save(); go('kgame');
+  },
+  cell(d) { openPicker(+d.p, d.c); },
+  kb(d) {
+    const g = G('kniffel').current, p = g.players[+d.p];
+    $('#modalBox').innerHTML = `<h3>${esc(p.name)}: Kniffel-Bonus</h3><p>Wie viele weitere Kniffel (+${g.settings.kbVal} je)?</p>
+      <div class="grid" style="grid-template-columns:repeat(5,1fr)">${[0,1,2,3,4].map(v => `<button data-act="setKb" data-p="${d.p}" data-v="${v}">${v}</button>`).join('')}</div>`;
+    $('#modal').classList.add('on');
+  },
+  setKb(d) { G('kniffel').current.players[+d.p].kb = +d.v; save(); closeModal(); render(); },
+  set(d) {
+    const g = G('kniffel').current, p = g.players[+d.p];
+    if (d.v === 'x') delete p.s[d.c]; else p.s[d.c] = +d.v;
+    save(); closeModal(); render();
+    if (isDone(g)) finish();
+  },
+  closeModal,
+  abort() { if (confirm('Spiel wirklich abbrechen? Es wird nicht in die Statistik aufgenommen.')) { G('kniffel').current = null; save(); go('kmenu'); } },
+  resetStats() { if (confirm('Alle Kniffel-Statistiken unwiderruflich löschen?')) { G('kniffel').history = []; save(); render(); } },
+  tog(d) { if (d.k === 'sound') DB.sound = !DB.sound; else { const s = G('kniffel').settings; s.kb = !kset().kb; } save(); render(); },
+  defaults() { if (confirm('Alle Regelwerte auf Standard setzen?')) { G('kniffel').settings = {}; save(); render(); } },
+  winMenu() { $('#win').classList.remove('on'); go('kmenu'); },
+  winNew() { $('#win').classList.remove('on'); ACT.newGame(); },
+};
+
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-act]');
+  if (t && ACT[t.dataset.act]) ACT[t.dataset.act](t.dataset);
+});
+document.addEventListener('input', e => {
+  const t = e.target;
+  if (t.dataset.i !== undefined) setup.names[+t.dataset.i] = t.value;
+});
+document.addEventListener('change', e => {
+  const t = e.target;
+  if (t.dataset.set) { const v = Math.max(0, parseInt(t.value, 10) || 0); G('kniffel').settings[t.dataset.set] = v; save(); }
+});
+
+function closeModal() { $('#modal').classList.remove('on'); }
+
+function openPicker(pi, cid) {
+  const g = G('kniffel').current, p = g.players[pi], c = ALL.find(x => x.id === cid), set = g.settings;
+  const cur = p.s[cid];
+  let body;
+  const b = (v, txt, cls = '') => `<button class="${cls}" data-act="set" data-p="${pi}" data-c="${cid}" data-v="${v}">${txt}</button>`;
+  if (c.type === 'upper') {
+    body = `<div class="grid" style="grid-template-columns:repeat(3,1fr)">${[0,1,2,3,4,5].map(n => b(n * c.face, `${n}× <small style="opacity:.6">= ${n * c.face}</small>`, n ? '' : 'z')).join('')}</div>`;
+  } else if (c.type === 'fixed') {
+    body = `<div class="grid" style="grid-template-columns:1fr 1fr">${b(set[c.key], '✓ ' + set[c.key])}${b(0, 'Streichen (0)', 'z')}</div>`;
+  } else {
+    const vals = Array.from({length: 26}, (_, i) => i + 5);
+    body = `<div class="grid" style="grid-template-columns:repeat(6,1fr)">${b(0, '0', 'z')}${vals.map(v => b(v, v)).join('')}</div>`;
+  }
+  $('#modalBox').innerHTML = `<h3>${esc(p.name)}: ${c.label}</h3><p>${c.type === 'upper' ? 'Wie viele Würfel mit ' + c.face + '?' : c.type === 'fixed' ? 'Geschafft oder gestrichen?' : 'Summe aller Augen (0 = streichen)'}</p>${body}
+    ${cur !== undefined ? `<button class="btn" style="margin-top:12px" data-act="set" data-p="${pi}" data-c="${cid}" data-v="x">Feld leeren</button>` : ''}`;
+  $('#modal').classList.add('on');
+}
+
+/* ---------- Spielende ---------- */
+function finish() {
+  const st = G('kniffel'), g = st.current, set = g.settings;
+  const res = g.players.map(p => ({name: p.name, ...calc(p, set), kn: p.s.kn > 0 ? 1 + (p.kb || 0) : (p.kb || 0)}));
+  const max = Math.max(...res.map(r => r.total));
+  const winners = res.filter(r => r.total === max).map(r => r.name);
+  st.history.push({id: g.id, date: Date.now(), winners: winners.map(w => w.toLowerCase()), players: res.map(r => ({name: r.name, total: r.total, kn: r.kn}))});
+  st.current = null; save();
+  const medal = ['🥇', '🥈', '🥉'];
+  const sorted = res.slice().sort((a, b) => b.total - a.total);
+  $('#winBox').innerHTML = `<div class="trophy">🏆</div><p style="margin:0;color:var(--dim)">${winners.length > 1 ? 'Unentschieden – Gewinner' : 'Gewinner'}</p>
+    <h2>${winners.map(esc).join(' &amp; ')}</h2><p style="margin:0 0 12px;font-size:20px">${max} Punkte</p>
+    <div style="margin-bottom:16px">${sorted.map((r, i) => `<div class="rank"><span>${medal[i] || (i + 1) + '.'} ${esc(r.name)}</span><b>${r.total}</b></div>`).join('')}</div>
+    <button class="btn ok" data-act="winNew">Neues Spiel</button><button class="btn" data-act="winMenu">Zum Menü</button>`;
+  $('#win').classList.add('on');
+  fanfare(); confetti();
+}
+
+/* ---------- Ton ---------- */
+let ac;
+function unlock() {
+  try { if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)(); if (ac.state === 'suspended') ac.resume(); } catch (e) {}
+}
+document.addEventListener('touchstart', unlock, {passive: true});
+document.addEventListener('click', unlock);
+function fanfare() {
+  if (!DB.sound || !ac) return;
+  const seq = [[523.25, 0, .15], [659.25, .15, .15], [783.99, .3, .15], [1046.5, .45, .35], [783.99, .85, .12], [1046.5, .97, .6], [1318.5, 1.3, .9]];
+  const t0 = ac.currentTime + .05;
+  for (const [f, s, d] of seq) {
+    const o = ac.createOscillator(), o2 = ac.createOscillator(), gn = ac.createGain();
+    o.type = 'triangle'; o2.type = 'square'; o.frequency.value = f; o2.frequency.value = f / 2;
+    gn.gain.setValueAtTime(0, t0 + s); gn.gain.linearRampToValueAtTime(.22, t0 + s + .02); gn.gain.exponentialRampToValueAtTime(.001, t0 + s + d + .25);
+    o.connect(gn); o2.connect(gn); gn.connect(ac.destination);
+    o.start(t0 + s); o2.start(t0 + s); o.stop(t0 + s + d + .3); o2.stop(t0 + s + d + .3);
+  }
+}
+
+/* ---------- Konfetti ---------- */
+function confetti() {
+  const cv = $('#conf'), ctx = cv.getContext('2d'), dpr = window.devicePixelRatio || 1;
+  cv.width = innerWidth * dpr; cv.height = innerHeight * dpr; ctx.scale(dpr, dpr);
+  const cols = ['#ff5a5f', '#ffc83d', '#30c86a', '#5b8cff', '#c77dff', '#fff'];
+  const P = Array.from({length: 170}, () => ({x: Math.random() * innerWidth, y: -Math.random() * innerHeight, w: 6 + Math.random() * 6, h: 8 + Math.random() * 8, vy: 2 + Math.random() * 3.5, vx: -1 + Math.random() * 2, r: Math.random() * 6, vr: -.2 + Math.random() * .4, c: cols[Math.random() * cols.length | 0]}));
+  const end = performance.now() + 6000;
+  (function frame(now) {
+    ctx.clearRect(0, 0, innerWidth, innerHeight);
+    for (const p of P) {
+      p.x += p.vx + Math.sin(p.y / 40); p.y += p.vy; p.r += p.vr;
+      if (p.y > innerHeight + 20 && now < end - 1500) { p.y = -20; p.x = Math.random() * innerWidth; }
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.r); ctx.fillStyle = p.c; ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); ctx.restore();
+    }
+    if (now < end) requestAnimationFrame(frame); else ctx.clearRect(0, 0, innerWidth, innerHeight);
+  })(performance.now());
+}
+
+/* ---------- Start ---------- */
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+render();
+</script>
+</body>
+</html>
