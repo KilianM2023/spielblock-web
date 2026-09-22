@@ -356,7 +356,7 @@ const ACT = {
     const g = G('tutto').current, pi = +d.p, p = g.players[pi];
     if (d.v === 'ok') {
       const max = Math.max(...g.players.map(x => x.total));
-      g.players.forEach((x, i) => { if (i !== pi && x.total === max) x.total = Math.max(0, x.total - 1000); });
+      if (p.total !== max) g.players.forEach(x => { if (x.total === max) x.total = Math.max(0, x.total - 1000); });
       p.total += 1000; p.turns.push(1000);
     } else {
       p.turns.push(0);
