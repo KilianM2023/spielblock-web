@@ -241,7 +241,7 @@ const VIEWS = {
           <span class="name">${i === g.turn ? '▶️ ' : ''}${esc(p.name)}</span>
           <span style="font-size:26px;font-weight:800;${p.total === max && max > 0 ? 'color:var(--gold)' : ''}">${p.total}</span>
         </div>
-        ${p.turns.length ? `<div class="hint" style="margin-top:6px">${p.turns.slice(-6).map(v => (v >= 0 ? '+' : '') + v).join('  ·  ')}</div>` : ''}
+        ${p.turns.length ? `<div class="hint" style="margin-top:6px">${p.turns.slice(-6).map(v => v === 0 ? '🚫' : (v > 0 ? '+' : '') + v).join('  ·  ')}</div>` : ''}
       </button>`).join('')}
       <div style="height:8px"></div>
       <button class="btn" data-act="plusminus">➕➖ Plus/Minus-Karte</button>
@@ -416,7 +416,7 @@ function openTuttoEntry(pi) {
   $('#modalBox').innerHTML = `<h3>${esc(p.name)}: Punkte eintragen</h3><p>${active ? 'Punktzahl dieses Wurfs (0 = Niete/Aussetzen)' : 'Korrektur (z. B. Plus/Minus-Karte) – auch negative Werte möglich'}</p>
     <input class="inp" id="ptsInput" type="number" inputmode="numeric" placeholder="Punkte" style="text-align:center;font-size:22px">
     <div class="grid" style="grid-template-columns:1fr 1fr;margin-top:10px">
-      <button class="z" data-act="submitPts" data-p="${pi}" data-v="0">0 Punkte</button>
+      <button class="z" data-act="submitPts" data-p="${pi}" data-v="0">🚫 Aussetzen</button>
       <button data-act="submitPts" data-p="${pi}" data-v="input">Eintragen</button>
     </div>
     ${last !== undefined ? `<button class="btn" style="margin-top:12px" data-act="undoT" data-p="${pi}">Letzten Eintrag rückgängig (${last >= 0 ? '+' : ''}${last})</button>` : ''}`;
