@@ -244,6 +244,7 @@ const VIEWS = {
         ${p.turns.length ? `<div class="hint" style="margin-top:6px">${p.turns.slice(-6).map(v => (v >= 0 ? '+' : '') + v).join('  ·  ')}</div>` : ''}
       </button>`).join('')}
       <div style="height:8px"></div>
+      <button class="btn" data-act="plusminus">➕➖ Plus/Minus-Karte</button>
       <button class="btn" data-act="clover">🍀 Kleeblatt: Sofortsieg</button>
       <button class="btn bad" data-act="abortT">Spiel abbrechen (nicht werten)</button>`;
   },
@@ -334,6 +335,36 @@ const ACT = {
     $('#modal').classList.add('on');
   },
   cloverWin(d) { closeModal(); finishTutto(+d.p); },
+  plusminus() {
+    const g = G('tutto').current;
+    $('#modalBox').innerHTML = `<h3>➕➖ Plus/Minus-Karte</h3><p>Wer würfelt gerade?</p>
+      <div class="grid">${g.players.map((p, i) => `<button data-act="pmPlayer" data-p="${i}">${i === g.turn ? '▶️ ' : ''}${esc(p.name)}</button>`).join('')}</div>`;
+    $('#modal').classList.add('on');
+  },
+  pmPlayer(d) {
+    const g = G('tutto').current, pi = +d.p;
+    $('#modalBox').innerHTML = `<h3>${esc(g.players[pi].name)}: Plus/Minus</h3><p>Tutto geschafft? Bei Erfolg: genau +1000 für ${esc(g.players[pi].name)}, −1000 für alle aktuell führenden Mitspieler (nie unter 0).</p>
+      <div class="grid" style="grid-template-columns:1fr 1fr">
+        <button class="z" data-act="pmResult" data-p="${pi}" data-v="fail">❌ Niete</button>
+        <button data-act="pmResult" data-p="${pi}" data-v="ok">✅ Geschafft</button>
+      </div>`;
+    $('#modal').classList.add('on');
+  },
+  pmResult(d) {
+    const g = G('tutto').current, pi = +d.p, p = g.players[pi];
+    if (d.v === 'ok') {
+      const max = Math.max(...g.players.map(x => x.total));
+      g.players.forEach((x, i) => { if (i !== pi && x.total === max) x.total = Math.max(0, x.total - 1000); });
+      p.total += 1000; p.turns.push(1000);
+    } else {
+      p.turns.push(0);
+    }
+    if (p.total >= g.settings.target) g.targetReached = true;
+    let done = false;
+    if (pi === g.turn) { g.turn = (g.turn + 1) % g.players.length; done = g.targetReached && g.turn === 0; }
+    save(); closeModal();
+    if (done) finishTutto(); else render();
+  },
   abortT() { if (confirm('Spiel wirklich abbrechen? Es wird nicht in die Statistik aufgenommen.')) { G('tutto').current = null; save(); go('tmenu'); } },
   closeModal,
   abort() { if (confirm('Spiel wirklich abbrechen? Es wird nicht in die Statistik aufgenommen.')) { G('kniffel').current = null; save(); go('kmenu'); } },
