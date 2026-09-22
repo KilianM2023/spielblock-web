@@ -235,7 +235,8 @@ const VIEWS = {
   tgame() {
     const g = G('tutto').current; if (!g) return '<p class="muted">Kein laufendes Spiel.</p>';
     const max = Math.max(...g.players.map(p => p.total));
-    return `${g.targetReached ? '<p class="muted" style="margin-top:0">🏁 Zielpunktzahl erreicht – letzte Runde läuft</p>' : ''}
+    return `<div class="card" style="margin-top:0"><div class="set"><span>🃏 Spiel mit Karten<br><small style="color:var(--dim)">Blendet Plus/Minus- &amp; Kleeblatt-Button ein</small></span><button class="tog ${g.cards ? 'on' : ''}" data-act="toggleCards"></button></div></div>
+      ${g.targetReached ? '<p class="muted" style="margin-top:0">🏁 Zielpunktzahl erreicht – letzte Runde läuft</p>' : ''}
       ${g.players.map((p, i) => `<button class="card" data-act="addPts" data-p="${i}" style="width:100%;text-align:left;display:block;${i === g.turn ? 'border:2px solid var(--acc)' : ''}">
         <div style="display:flex;justify-content:space-between;align-items:center">
           <span class="name">${i === g.turn ? '▶️ ' : ''}${esc(p.name)}</span>
@@ -244,8 +245,8 @@ const VIEWS = {
         ${p.turns.length ? `<div class="hint" style="margin-top:6px">${p.turns.slice(-6).map(v => v === 0 ? '🚫' : (v > 0 ? '+' : '') + v).join('  ·  ')}</div>` : ''}
       </button>`).join('')}
       <div style="height:8px"></div>
-      <button class="btn" data-act="plusminus">➕➖ Plus/Minus-Karte</button>
-      <button class="btn" data-act="clover">🍀 Kleeblatt: Sofortsieg</button>
+      ${g.cards ? `<button class="btn" data-act="plusminus">➕➖ Plus/Minus-Karte</button>
+      <button class="btn" data-act="clover">🍀 Kleeblatt: Sofortsieg</button>` : ''}
       <button class="btn bad" data-act="abortT">Spiel abbrechen (nicht werten)</button>`;
   },
   kstats() { return statsView('kniffel', {key: 'kn', label: 'Kniffel'}); },
@@ -289,7 +290,7 @@ const ACT = {
       G(key).current = {id: Date.now(), settings: kset(), players: names.map(name => ({name, s: {}, kb: 0}))};
       save(); go('kgame');
     } else {
-      G(key).current = {id: Date.now(), settings: tset(), players: names.map(name => ({name, total: 0, turns: []})), turn: 0, targetReached: false};
+      G(key).current = {id: Date.now(), settings: tset(), players: names.map(name => ({name, total: 0, turns: []})), turn: 0, targetReached: false, cards: false};
       save(); go('tgame');
     }
   },
@@ -335,6 +336,7 @@ const ACT = {
     $('#modal').classList.add('on');
   },
   cloverWin(d) { closeModal(); finishTutto(+d.p); },
+  toggleCards() { const g = G('tutto').current; g.cards = !g.cards; save(); render(); },
   plusminus() {
     const g = G('tutto').current;
     $('#modalBox').innerHTML = `<h3>➕➖ Plus/Minus-Karte</h3><p>Wer würfelt gerade?</p>
