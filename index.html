@@ -44,6 +44,21 @@ label.l{display:block;color:var(--dim);font-size:13px;text-transform:uppercase;l
 .chips{display:flex;flex-wrap:wrap;gap:8px}
 .chip{padding:8px 14px;border-radius:99px;background:var(--card2);font-size:15px}
 .chip.used{opacity:.35}
+.chip.on{background:var(--acc)}
+.plus{color:var(--ok)}.minus{color:var(--bad)}
+.sk .seg{flex-wrap:wrap}
+.sk .seg button{min-width:40px}
+.chart{position:relative;background:var(--card);border-radius:18px;padding:12px 8px 8px;margin-bottom:12px;touch-action:pan-y}
+.chart svg{display:block;width:100%;overflow:visible}
+.chart .ax{font-size:11px;fill:var(--dim);font-variant-numeric:tabular-nums}
+.chart .lbl{font-size:12px;font-weight:700;fill:var(--txt)}
+.tip{position:absolute;top:8px;pointer-events:none;background:var(--card2);border-radius:10px;padding:8px 10px;font-size:13px;box-shadow:0 6px 18px rgba(0,0,0,.4);display:none;min-width:130px}
+.tip div{display:flex;justify-content:space-between;gap:10px;font-variant-numeric:tabular-nums}
+.sw{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;padding:4px 8px 10px;font-size:14px}
+table.tab{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+table.tab th,table.tab td{padding:6px 4px;text-align:right;border-bottom:1px solid var(--line)}
+table.tab th:first-child,table.tab td:first-child{text-align:left;color:var(--dim)}
 .sheet{border-radius:16px;overflow:clip;background:var(--card);min-width:fit-content}
 .wrap{border-radius:16px}
 .row{display:grid;grid-template-columns:112px repeat(var(--n),minmax(68px,1fr));border-bottom:1px solid var(--line)}
@@ -141,7 +156,12 @@ const TDEF = {target: 6000, deck: 'real'};
 const CDEF = {limit: 100, reset: true, kami: true, joker: true};
 const ZERO = {kami: '💥', joker: '🃏'};
 const cset = () => ({...CDEF, ...G('cabo').settings});
-const DEFS = {kniffel: KDEF, tutto: TDEF, cabo: CDEF};
+const SERIES = ['#3987e5', '#d95926', '#199e70', '#c98500'];
+const SDEF = {sau: 10, solo: 50, ramsch: 10, durch: 50, extra: 10, lfSau: 3, lfSolo: 3, lfWenz: 2, ramschOn: true, kontra: true};
+const sset = () => ({...SDEF, ...G('schafkopf').settings});
+const SKT = {sau: 'Sauspiel', solo: 'Solo', wenz: 'Wenz', ramsch: 'Ramsch'};
+const eur = (c, sign) => (sign && c > 0 ? '+' : '') + (c / 100).toFixed(2).replace('.', ',') + ' €';
+const DEFS = {kniffel: KDEF, tutto: TDEF, cabo: CDEF, schafkopf: SDEF};
 const TCARDS = {
   b200: {sym: '⭐', big: '200', name: 'Bonus', co: '+200', c: 'linear-gradient(145deg,#ffb938,#e07b12)'},
   b300: {sym: '⭐', big: '300', name: 'Bonus', co: '+300', c: 'linear-gradient(145deg,#ffb938,#e07b12)'},
@@ -193,32 +213,33 @@ function stats(k) {
   for (const g of G(k).history) for (const p of g.players) {
     const key = p.name.toLowerCase();
     const s = m[key] || (m[key] = {name: p.name, games: 0, wins: 0, sum: 0, best: 0, kn: 0});
-    s.name = p.name; s.games++; s.sum += p.total; s.best = s.games === 1 ? p.total : low ? Math.min(s.best, p.total) : Math.max(s.best, p.total); s.kn += p.kn || 0;
+    s.name = p.name; s.games++; s.sum += p.total; s.best = s.games === 1 ? p.total : low ? Math.min(s.best, p.total) : Math.max(s.best, p.total); s.kn += p.kn || 0; s.solo = (s.solo || 0) + (p.solo || 0);
     if (g.winners.includes(key)) s.wins++;
   }
   return Object.values(m).sort((a, b) => b.wins - a.wins || (low ? -1 : 1) * (b.sum / b.games - a.sum / a.games));
 }
-function statsView(key, extra) {
-  const st = stats(key), h = G(key).history;
+function statsView(key, extra, o = {}) {
+  const st = stats(key), h = G(key).history, f = o.fmt || (v => v);
   if (!st.length) return '<p class="muted" style="margin-top:40px">Noch keine abgeschlossenen Spiele.</p>';
   return st.map((s, i) => `<div class="card"><div class="name">${i === 0 ? '🏆 ' : ''}${esc(s.name)}</div>
-    <div class="stat"><div>${s.games}<span>Spiele</span></div><div>${s.wins}<span>Siege</span></div><div>${Math.round(100 * s.wins / s.games)}%<span>Siegquote</span></div>
-    <div>${Math.round(s.sum / s.games)}<span>Ø Punkte</span></div><div>${s.best}<span>Bestwert</span></div>${extra ? `<div>${s[extra.key]}<span>${extra.label}</span></div>` : ''}</div></div>`).join('') +
-    `<label class="l">Letzte Spiele</label><div class="card">${h.slice(-10).reverse().map(g => `<div class="hist"><span>${new Date(g.date).toLocaleDateString('de-DE')}</span><span style="text-align:right">${g.players.slice().sort((a, b) => key === 'cabo' ? a.total - b.total : b.total - a.total).map(p => `${g.winners.includes(p.name.toLowerCase()) ? '🏆' : ''}${esc(p.name)} ${p.total}`).join(' · ')}</span></div>`).join('')}</div>
+    <div class="stat"><div>${s.games}<span>${o.games || 'Spiele'}</span></div><div>${s.wins}<span>Siege</span></div><div>${Math.round(100 * s.wins / s.games)}%<span>Siegquote</span></div>
+    ${o.sum ? `<div>${f(s.sum)}<span>Gesamt</span></div>` : ''}<div>${f(Math.round(s.sum / s.games))}<span>${o.avg || 'Ø Punkte'}</span></div><div>${f(s.best)}<span>Bestwert</span></div>${extra ? `<div>${s[extra.key]}<span>${extra.label}</span></div>` : ''}</div></div>`).join('') +
+    `<label class="l">Letzte Spiele</label><div class="card">${h.slice(-10).reverse().map((g, k) => `<div class="hist" ${key === 'schafkopf' && g.log ? `data-act="sHist" data-i="${h.length - 1 - k}" style="cursor:pointer"` : ''}><span>${new Date(g.date).toLocaleDateString('de-DE')}${key === 'schafkopf' && g.log ? ' <span style="color:var(--acc)">›</span>' : ''}</span><span style="text-align:right">${g.players.slice().sort((a, b) => key === 'cabo' ? a.total - b.total : b.total - a.total).map(p => `${g.winners.includes(p.name.toLowerCase()) ? '🏆' : ''}${esc(p.name)} ${f(p.total)}`).join(' · ')}</span></div>`).join('')}</div>
     <button class="btn bad" data-act="resetStats" data-game="${key}" style="margin-top:8px">Statistik zurücksetzen</button>`;
 }
 
 /* ---------- Navigation ---------- */
-const BACK = {kmenu: 'home', ksetup: 'kmenu', kgame: 'kmenu', kstats: 'kmenu', ksettings: 'kmenu', tmenu: 'home', tsetup: 'tmenu', tgame: 'tmenu', tstats: 'tmenu', tsettings: 'tmenu', cmenu: 'home', csetup: 'cmenu', cgame: 'cmenu', cstats: 'cmenu', csettings: 'cmenu'};
-const TITLE = {home: 'Spielblock', kmenu: 'Kniffel', ksetup: 'Neues Spiel', kgame: 'Kniffel', kstats: 'Statistik', ksettings: 'Einstellungen', tmenu: 'Tutto', tsetup: 'Neues Spiel', tgame: 'Tutto', tstats: 'Statistik', tsettings: 'Einstellungen', cmenu: 'Cabo', csetup: 'Neues Spiel', cgame: 'Cabo', cstats: 'Statistik', csettings: 'Einstellungen'};
+const BACK = {kmenu: 'home', ksetup: 'kmenu', kgame: 'kmenu', kstats: 'kmenu', ksettings: 'kmenu', tmenu: 'home', tsetup: 'tmenu', tgame: 'tmenu', tstats: 'tmenu', tsettings: 'tmenu', cmenu: 'home', csetup: 'cmenu', cgame: 'cmenu', cstats: 'cmenu', csettings: 'cmenu', smenu: 'home', ssetup: 'smenu', sgame: 'smenu', sstats: 'smenu', ssettings: 'smenu', schart: 'sgame', spay: 'smenu', sevening: 'sstats'};
+const TITLE = {home: 'Spielblock', kmenu: 'Kniffel', ksetup: 'Neues Spiel', kgame: 'Kniffel', kstats: 'Statistik', ksettings: 'Einstellungen', tmenu: 'Tutto', tsetup: 'Neues Spiel', tgame: 'Tutto', tstats: 'Statistik', tsettings: 'Einstellungen', cmenu: 'Cabo', csetup: 'Neues Spiel', cgame: 'Cabo', cstats: 'Statistik', csettings: 'Einstellungen', smenu: 'Schafkopf', ssetup: 'Neuer Abend', sgame: 'Schafkopf', sstats: 'Statistik', ssettings: 'Einstellungen', schart: 'Verlauf', spay: 'Abrechnung', sevening: 'Spieleabend'};
 let view = 'home', setup = {game: 'kniffel', n: 2, names: ['', '']};
 function go(v) { view = v; render(); $('#app').scrollTop = 0; }
-$('#back').onclick = () => { if (BACK[view]) go(BACK[view]); };
+$('#back').onclick = () => { const b = (view === 'schart' ? chartSrc?.chartBack : view === 'spay' ? chartSrc?.payBack : null) || BACK[view]; if (b) go(b); };
 
 function render() {
   $('#title').textContent = TITLE[view];
   $('#back').style.visibility = BACK[view] ? 'visible' : 'hidden';
   $('#app').innerHTML = VIEWS[view]();
+  if (view === 'schart') drawChart();
 }
 
 const VIEWS = {
@@ -226,7 +247,8 @@ const VIEWS = {
     return `<p class="muted" style="margin-top:0">Welches Spiel schreiben wir auf?</p>
       <button class="big" data-act="go" data-v="kmenu"><span class="ic">🎲</span><span>Kniffel<small>Würfelblock mit 13 Feldern</small></span></button>
       <button class="big" data-act="go" data-v="tmenu"><span class="ic">🎯</span><span>Tutto<small>Würfeln bis 6.000 Punkte</small></span></button>
-      <button class="big" data-act="go" data-v="cmenu"><span class="ic">🃏</span><span>Cabo<small>Unter 100 Punkten bleiben</small></span></button>`;
+      <button class="big" data-act="go" data-v="cmenu"><span class="ic">🃏</span><span>Cabo<small>Unter 100 Punkten bleiben</small></span></button>
+      <button class="big" data-act="go" data-v="smenu"><span class="ic">🐑</span><span>Schafkopf<small>Spieleabend abrechnen</small></span></button>`;
   },
   kmenu() {
     const cur = G('kniffel').current;
@@ -265,6 +287,72 @@ const VIEWS = {
       <button class="btn bad" data-act="abortC">Spiel abbrechen (nicht werten)</button>`;
   },
   cstats() { return statsView('cabo', null); },
+  smenu() {
+    const cur = G('schafkopf').current;
+    return `<button class="big" data-act="newGame" data-game="schafkopf"><span class="ic">✨</span><span>Neuer Spieleabend</span></button>
+      <button class="big" data-act="go" data-v="sgame" ${cur ? '' : 'disabled'}><span class="ic">▶️</span><span>Abend fortsetzen<small>${cur ? esc(cur.players.map(p => p.name).join(', ')) + ' · ' + cur.log.length + ' Spiele' : 'kein laufender Abend'}</small></span></button>
+      <button class="big" data-act="go" data-v="sstats"><span class="ic">📊</span><span>Statistik</span></button>
+      <button class="big" data-act="go" data-v="ssettings"><span class="ic">⚙️</span><span>Spieleinstellungen<small>Tarife &amp; Laufende</small></span></button>`;
+  },
+  sgame() {
+    const g = G('schafkopf').current; if (!g) return '<p class="muted">Kein laufender Abend.</p>';
+    return `<p class="muted" style="margin-top:0">${g.log.length} Spiele gespielt</p>
+      ${g.players.map(p => `<div class="card" style="display:flex;justify-content:space-between;align-items:center">
+        <span class="name">${esc(p.name)}</span><span style="font-size:24px;font-weight:800" class="${p.total > 0 ? 'plus' : p.total < 0 ? 'minus' : ''}">${eur(p.total, true)}</span></div>`).join('')}
+      <button class="btn acc" data-act="sNew">🐑 Spiel eintragen</button>
+      ${g.log.length ? `<button class="btn" data-act="sChart">📈 Verlauf des Abends</button>
+      <button class="btn" data-act="sUndo">↩️ Letztes Spiel rückgängig</button>
+      <label class="l">Letzte Spiele</label><div class="card">${g.log.slice(-8).reverse().map(r => skLine(r, g.players.map(p => p.name))).join('')}</div>` : ''}
+      <div style="height:8px"></div>
+      <button class="btn ok" data-act="sEnd">🏁 Abend beenden &amp; abrechnen</button>
+      <button class="btn bad" data-act="abortS">Abend abbrechen (nicht werten)</button>`;
+  },
+  schart() {
+    const c = chartSrc;
+    if (!c || !c.log.length) return '<p class="muted" style="margin-top:40px">Noch keine Spiele eingetragen.</p>';
+    const cum = c.names.map((_, i) => { let t = 0; return [0, ...c.log.map(d => t += d[i])]; });
+    return `<div class="chart" id="chart"><div class="legend">${c.names.map((n, i) => `<span><span class="sw" style="background:${SERIES[i]}"></span>${esc(n)}</span>`).join('')}</div><div id="chartSvg"></div><div class="tip" id="tip"></div></div>
+      <p class="muted">Antippen oder darüberfahren zeigt den Stand nach jedem Spiel.</p>
+      <details class="card"><summary style="font-weight:600">Tabelle anzeigen</summary>
+      <table class="tab"><tr><th>Spiel</th>${c.names.map(n => `<th>${esc(n)}</th>`).join('')}</tr>
+      ${cum[0].map((_, j) => `<tr><td>${j || 'Start'}</td>${cum.map(s => `<td>${eur(s[j], true)}</td>`).join('')}</tr>`).join('')}</table></details>`;
+  },
+  sevening() {
+    const c = chartSrc; if (!c) return '<p class="muted">Kein Abend ausgewählt.</p>';
+    const bal = c.names.map((n, i) => ({n, v: c.log.reduce((a, d) => a + d[i], 0)})).sort((a, b) => b.v - a.v);
+    return `<p class="muted" style="margin-top:0">${new Date(c.date).toLocaleDateString('de-DE', {weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'})} · ${c.log.length} Spiele</p>
+      ${bal.map((b, i) => `<div class="card" style="display:flex;justify-content:space-between;align-items:center">
+        <span class="name">${i === 0 ? '🏆 ' : ''}${esc(b.n)}</span><span style="font-size:24px;font-weight:800" class="${b.v > 0 ? 'plus' : b.v < 0 ? 'minus' : ''}">${eur(b.v, true)}</span></div>`).join('')}
+      <button class="btn acc" data-act="go" data-v="schart">📈 Verlauf des Abends</button>
+      <button class="btn" data-act="go" data-v="spay">💸 Wer zahlt wem?</button>
+      ${c.games.length ? `<label class="l">Alle Spiele</label><div class="card">${c.games.map((r, i) => skLine(r, c.names, i + 1)).join('')}</div>` : ''}`;
+  },
+  spay() {
+    const c = chartSrc; if (!c) return '<p class="muted">Keine Abrechnung vorhanden.</p>';
+    const bal = c.names.map((n, i) => ({n, v: c.log.reduce((a, d) => a + d[i], 0)})), pay = [];
+    const deb = bal.filter(b => b.v < 0).map(b => ({...b, v: -b.v})).sort((a, b) => b.v - a.v), cre = bal.filter(b => b.v > 0).map(b => ({...b})).sort((a, b) => b.v - a.v);
+    for (const d of deb) for (const k of cre) { const m = Math.min(d.v, k.v); if (m > 0) { pay.push([d.n, k.n, m]); d.v -= m; k.v -= m; } }
+    return `<p class="muted" style="margin-top:0">So viel muss gezahlt werden, damit alles aufgeht:</p>
+      ${pay.length ? pay.map(([a, b, m]) => `<div class="card" style="display:flex;align-items:center;gap:10px">
+        <span class="name" style="flex:1">${esc(a)} <span style="color:var(--dim);font-weight:400">→</span> ${esc(b)}</span><span style="font-size:22px;font-weight:800">${eur(m)}</span></div>`).join('') : '<div class="card" style="text-align:center">🤝 Alle sind ausgeglichen – niemand muss zahlen.</div>'}
+      <label class="l">Endstand</label><div class="card">${bal.slice().sort((a, b) => b.v - a.v).map(b => `<div class="hist"><span>${esc(b.n)}</span><b class="${b.v > 0 ? 'plus' : b.v < 0 ? 'minus' : ''}">${eur(b.v, true)}</b></div>`).join('')}</div>
+      <button class="btn acc" data-act="go" data-v="schart">📈 Verlauf des Abends</button>
+      <button class="btn ok" data-act="newGame" data-game="schafkopf">Neuer Abend</button>
+      <button class="btn" data-act="go" data-v="smenu">Zum Menü</button>`;
+  },
+  sstats() { return statsView('schafkopf', {key: 'solo', label: 'Solos'}, {fmt: v => eur(v, true), avg: 'Ø pro Abend', sum: true, games: 'Abende'}); },
+  ssettings() {
+    const s = sset();
+    const num = (k, l) => `<div class="set"><span>${l}</span><input type="number" inputmode="numeric" data-set="${k}" data-game="schafkopf" value="${s[k]}"></div>`;
+    const tog = (k, l, h) => `<div class="set"><span>${l}<br><small style="color:var(--dim)">${h}</small></span><button class="tog ${s[k] ? 'on' : ''}" data-act="tog" data-k="${k}" data-game="schafkopf"></button></div>`;
+    return `<p class="muted" style="margin-top:0">Alle Beträge in Cent. Änderungen gelten für neue Abende.</p>
+      <label class="l">Tarife</label>
+      <div class="card">${num('sau', 'Sauspiel')}${num('solo', 'Solo / Wenz')}${num('ramsch', 'Ramsch')}${num('durch', 'Durchmarsch')}${num('extra', 'Schneider, Schwarz, je Laufender')}</div>
+      <label class="l">Laufende zählen ab</label>
+      <div class="card">${num('lfSau', 'Sauspiel')}${num('lfSolo', 'Solo')}${num('lfWenz', 'Wenz')}</div>
+      <div class="card">${tog('ramschOn', 'Ramsch', 'Wenn keiner spielt: Verlierer zahlt an alle, je Jungfrau ×2')}${tog('kontra', 'Kontra / Re', 'Jeweils Verdopplung')}</div>
+      <button class="btn" data-act="defaults" data-game="schafkopf">Standardregeln wiederherstellen</button>`;
+  },
   csettings() {
     const s = cset();
     const num = (k, l) => `<div class="set"><span>${l}</span><input type="number" inputmode="numeric" data-set="${k}" data-game="cabo" value="${s[k]}"></div>`;
@@ -279,8 +367,8 @@ const VIEWS = {
   },
   ksetup() {
     const known = allNames(), used = setup.names.map(n => n.trim().toLowerCase());
-    return `<label class="l">Anzahl Spieler</label>
-      <div class="seg">${[1,2,3,4,5,6].map(n => `<button class="${n === setup.n ? 'on' : ''}" data-act="cnt" data-n="${n}">${n}</button>`).join('')}</div>
+    return `${setup.game === 'schafkopf' ? '<p class="muted" style="margin-top:0">Schafkopf wird zu viert gespielt.</p>' : `<label class="l">Anzahl Spieler</label>
+      <div class="seg">${[1,2,3,4,5,6].map(n => `<button class="${n === setup.n ? 'on' : ''}" data-act="cnt" data-n="${n}">${n}</button>`).join('')}</div>`}
       <label class="l">Namen</label>
       ${setup.names.map((n, i) => `<input class="inp" data-i="${i}" value="${esc(n)}" placeholder="Spieler ${i + 1}" maxlength="14" autocapitalize="words" autocomplete="off">`).join('')}
       ${Object.keys(known).length ? `<label class="l">Bekannte Spieler (antippen)</label>
@@ -348,12 +436,12 @@ const VIEWS = {
       <button class="btn" data-act="defaults" data-game="tutto">Standardregeln wiederherstellen</button>`;
   },
 };
-VIEWS.tsetup = VIEWS.csetup = VIEWS.ksetup;
+VIEWS.tsetup = VIEWS.csetup = VIEWS.ssetup = VIEWS.ksetup;
 
 /* ---------- Aktionen ---------- */
 const ACT = {
   go: d => go(d.v),
-  newGame(d) { const game = d.game || 'kniffel'; setup = {game, n: 2, names: ['', '']}; go(game[0] + 'setup'); },
+  newGame(d) { const game = d.game || 'kniffel'; const n = game === 'schafkopf' ? 4 : 2; setup = {game, n, names: Array(n).fill('')}; go(game[0] + 'setup'); },
   cnt(d) { const n = +d.n; setup.names = Array.from({length: n}, (_, i) => setup.names[i] || ''); setup.n = n; render(); },
   chip(d) {
     if (setup.names.some(x => x.trim().toLowerCase() === d.name.toLowerCase())) return;
@@ -369,6 +457,9 @@ const ACT = {
     if (key === 'kniffel') {
       G(key).current = {id: Date.now(), settings: kset(), players: names.map(name => ({name, s: {}, kb: 0}))};
       save(); go('kgame');
+    } else if (key === 'schafkopf') {
+      G(key).current = {id: Date.now(), settings: sset(), players: names.map(name => ({name, total: 0, solo: 0})), log: []};
+      save(); go('sgame');
     } else if (key === 'cabo') {
       G(key).current = {id: Date.now(), settings: cset(), players: names.map(name => ({name, total: 0})), log: []};
       save(); go('cgame');
@@ -485,6 +576,41 @@ const ACT = {
     if (!r || !confirm('Letzte Runde wirklich löschen?')) { if (r) g.log.push(r); return; }
     g.players.forEach((p, i) => p.total = r.prev[i]); save(); render();
   },
+  sNew() { sk = {type: 'sau', pl: [], won: true, sn: false, sw: false, lf: 0, kl: 0, ko: false, re: false, jf: 0, dm: false}; skModal(); },
+  sChart() { const g = G('schafkopf').current; chartSrc = {names: g.players.map(p => p.name), log: g.log.map(r => r.d), chartBack: 'sgame'}; go('schart'); },
+  winPayS() { $('#win').classList.remove('on'); const h = G('schafkopf').history.at(-1); chartSrc = {names: h.players.map(p => p.name), log: h.log || [], chartBack: 'spay', payBack: 'smenu'}; go('spay'); },
+  sHist(d) { const h = G('schafkopf').history[+d.i]; chartSrc = {names: h.players.map(p => p.name), log: h.log, games: h.games || [], date: h.date, chartBack: 'sevening', payBack: 'sevening'}; go('sevening'); },
+  skSet(d) {
+    const k = d.k, v = d.v;
+    if (k === 'type') { sk.type = v; sk.pl = []; sk.lf = 0; sk.jf = 0; sk.dm = false; }
+    else if (k === 'pl') {
+      const i = +v, max = sk.type === 'sau' ? 2 : 1;
+      if (sk.pl.includes(i)) sk.pl = sk.pl.filter(x => x !== i); else { sk.pl.push(i); if (sk.pl.length > max) sk.pl.shift(); }
+    }
+    else if (k === 'won') sk.won = v === '1';
+    else if (k === 'lf' || k === 'kl' || k === 'jf') sk[k] = +v;
+    else { sk[k] = !sk[k]; if (k === 'sw' && sk.sw) sk.sn = true; if (k === 'sn' && !sk.sn) sk.sw = false; if (k === 'ko' && !sk.ko) sk.re = false; if (k === 're' && sk.re) sk.ko = true; }
+    skModal();
+  },
+  skSave() {
+    const g = G('schafkopf').current, r = skCalc(g);
+    if (!r) return;
+    g.players.forEach((p, i) => p.total += r.d[i]);
+    if (sk.type === 'solo' || sk.type === 'wenz') g.players[sk.pl[0]].solo++;
+    g.log.push({...sk, pl: [...sk.pl], ...r}); save(); closeModal(); render();
+  },
+  sUndo() {
+    const g = G('schafkopf').current;
+    if (!confirm('Letztes Spiel wirklich löschen?')) return;
+    const r = g.log.pop();
+    g.players.forEach((p, i) => p.total -= r.d[i]);
+    if (r.type === 'solo' || r.type === 'wenz') g.players[r.pl[0]].solo--;
+    save(); render();
+  },
+  sEnd() { if (confirm('Abend beenden und abrechnen?')) finishSchafkopf(); },
+  abortS() { if (confirm('Abend wirklich abbrechen? Er wird nicht in die Statistik aufgenommen.')) { G('schafkopf').current = null; save(); go('smenu'); } },
+  winMenuS() { $('#win').classList.remove('on'); go('smenu'); },
+  winNewS() { $('#win').classList.remove('on'); ACT.newGame({game: 'schafkopf'}); },
   abortC() { if (confirm('Spiel wirklich abbrechen? Es wird nicht in die Statistik aufgenommen.')) { G('cabo').current = null; save(); go('cmenu'); } },
   winMenuC() { $('#win').classList.remove('on'); go('cmenu'); },
   winNewC() { $('#win').classList.remove('on'); ACT.newGame({game: 'cabo'}); },
@@ -505,7 +631,74 @@ document.addEventListener('change', e => {
   if (t.dataset.set) { const v = Math.max(0, parseInt(t.value, 10) || 0); G(t.dataset.game || 'kniffel').settings[t.dataset.set] = v; save(); }
 });
 
-let cr = {caller: -1, zero: {}};
+let cr = {caller: -1, zero: {}}, sk = null, chartSrc = null;
+function drawChart() {
+  const c = chartSrc, box = $('#chartSvg'); if (!box) return;
+  const cum = c.names.map((_, i) => { let t = 0; return [0, ...c.log.map(d => t += d[i])]; });
+  const W = box.clientWidth, H = 260, L = 46, Rt = 78, T = 10, B = 26, n = c.log.length;
+  const all = cum.flat(), lo = Math.min(0, ...all), hi = Math.max(0, ...all);
+  const step = [10, 20, 50, 100, 200, 500, 1000, 2000, 5000].find(v => (hi - lo) / v <= 5) || 10000;
+  const y0 = Math.floor(lo / step) * step, y1 = Math.max(Math.ceil(hi / step) * step, y0 + step);
+  const x = j => L + (W - L - Rt) * (n ? j / n : 0), y = v => T + (H - T - B) * (1 - (v - y0) / (y1 - y0));
+  let grid = '';
+  for (let v = y0; v <= y1; v += step) grid += `<line x1="${L}" x2="${W - Rt}" y1="${y(v)}" y2="${y(v)}" stroke="${v === 0 ? 'var(--dim)' : 'var(--line)'}" stroke-width="${v === 0 ? 1.5 : 1}" ${v === 0 ? '' : 'stroke-dasharray="2 4"'}/><text class="ax" x="${L - 6}" y="${y(v) + 4}" text-anchor="end">${(v / 100).toFixed(step < 100 ? 1 : 0).replace('.', ',')}€</text>`;
+  const xs = Math.max(1, Math.ceil(n / 8));
+  for (let j = 0; j <= n; j += xs) grid += `<text class="ax" x="${x(j)}" y="${H - 6}" text-anchor="middle">${j}</text>`;
+  const lines = cum.map((s, i) => `<path d="${s.map((v, j) => (j ? 'L' : 'M') + x(j).toFixed(1) + ' ' + y(v).toFixed(1)).join('')}" fill="none" stroke="${SERIES[i]}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`).join('');
+  const ends = cum.map((s, i) => ({i, y: y(s[n])})).sort((a, b) => a.y - b.y);
+  ends.forEach((e, k) => { e.ly = k ? Math.max(e.y, ends[k - 1].ly + 15) : e.y; });
+  const over = ends.length ? ends.at(-1).ly - (H - B) : 0;
+  if (over > 0) ends.forEach(e => e.ly -= over);
+  const labels = ends.map(e => `<circle cx="${x(n)}" cy="${e.y}" r="4.5" fill="${SERIES[e.i]}" stroke="var(--card)" stroke-width="2"/><text class="lbl" x="${x(n) + 9}" y="${e.ly + 4}">${esc(c.names[e.i].slice(0, 8))}</text>`).join('');
+  box.innerHTML = `<svg viewBox="0 0 ${W} ${H}" height="${H}" role="img" aria-label="Verlauf der Salden über ${n} Spiele">${grid}${lines}<line id="cross" y1="${T}" y2="${H - B}" stroke="var(--dim)" stroke-width="1" style="display:none"/>${labels}<g id="dots"></g><rect x="${L}" y="0" width="${W - L - Rt}" height="${H}" fill="transparent" id="hit"/></svg>`;
+  const tip = $('#tip'), cross = $('#cross'), dots = $('#dots'), hit = $('#hit');
+  const show = ev => {
+    const r = hit.getBoundingClientRect(), j = Math.max(0, Math.min(n, Math.round((ev.clientX - r.left) / r.width * n)));
+    cross.setAttribute('x1', x(j)); cross.setAttribute('x2', x(j)); cross.style.display = '';
+    dots.innerHTML = cum.map((s, i) => `<circle cx="${x(j)}" cy="${y(s[j])}" r="4.5" fill="${SERIES[i]}" stroke="var(--card)" stroke-width="2"/>`).join('');
+    tip.innerHTML = `<b>${j ? 'Nach Spiel ' + j : 'Start'}</b>` + cum.map((s, i) => ({i, v: s[j]})).sort((a, b) => b.v - a.v).map(o => `<div><span><span class="sw" style="background:${SERIES[o.i]}"></span>${esc(c.names[o.i])}</span><span>${eur(o.v, true)}</span></div>`).join('');
+    tip.style.display = 'block';
+    const px = x(j) + 8, tw = tip.offsetWidth;
+    tip.style.left = (px + tw + 8 > W ? x(j) - tw - 4 : px + 8) + 'px'; tip.style.top = '44px';
+  };
+  const hide = () => { tip.style.display = 'none'; cross.style.display = 'none'; dots.innerHTML = ''; };
+  hit.addEventListener('pointermove', show); hit.addEventListener('pointerdown', show); hit.addEventListener('pointerleave', hide);
+}
+function skLine(r, names, no) {
+  const nm = i => esc(names[i]);
+  return `<div class="hist"><span>${no ? no + '. ' : ''}${SKT[r.type]} · ${r.type === 'ramsch' ? (r.dm ? '🚶 Durchmarsch ' : '💀 ') + nm(r.pl[0]) + (r.jf && !r.dm ? ' · 👰×' + r.jf : '') : r.pl.map(nm).join(' + ') + (r.won ? ' ✅' : ' ❌')}${r.mult > 1 ? ' · ×' + r.mult : ''}</span><span>${eur(Math.abs(r.d[r.pl[0]]))}</span></div>`;
+}
+function skCalc(g) {
+  const s = g.settings, need = sk.type === 'sau' ? 2 : 1;
+  if (sk.pl.length !== need) return null;
+  const mult = 2 ** (sk.kl + sk.ko + sk.re + (sk.type === 'ramsch' && !sk.dm ? sk.jf : 0));
+  if (sk.type === 'ramsch') { const v = (sk.dm ? s.durch : s.ramsch) * mult, sg = sk.dm ? 1 : -1; return {mult, v, d: g.players.map((_, i) => i === sk.pl[0] ? 3 * sg * v : -sg * v)}; }
+  const thr = {sau: s.lfSau, solo: s.lfSolo, wenz: s.lfWenz}[sk.type], lf = sk.lf >= thr ? sk.lf : 0;
+  const v = ((sk.type === 'sau' ? s.sau : s.solo) + s.extra * (sk.sn + sk.sw + lf)) * mult, sg = sk.won ? 1 : -1;
+  const d = g.players.map((_, i) => sk.type === 'sau' ? (sk.pl.includes(i) ? sg * v : -sg * v) : (i === sk.pl[0] ? 3 * sg * v : -sg * v));
+  return {mult, v, d};
+}
+function skModal() {
+  const g = G('schafkopf').current, s = g.settings, r = skCalc(g);
+  const seg = (k, opts) => `<div class="seg">${opts.map(([v, l]) => `<button class="${String(sk[k] === true ? 1 : sk[k] === false ? 0 : sk[k]) === String(v) ? 'on' : ''}" data-act="skSet" data-k="${k}" data-v="${v}">${l}</button>`).join('')}</div>`;
+  const tog = (k, l) => `<button class="${sk[k] ? 'on' : ''}" data-act="skSet" data-k="${k}">${l}</button>`;
+  const types = Object.entries(SKT).filter(([k]) => k !== 'ramsch' || s.ramschOn);
+  const thr = {sau: s.lfSau, solo: s.lfSolo, wenz: s.lfWenz}[sk.type];
+  const who = sk.type === 'sau' ? 'Wer hat zusammengespielt? (2 antippen)' : sk.type === 'ramsch' ? (sk.dm ? 'Wer hat den Durchmarsch gemacht?' : 'Wer hat verloren (meiste Augen)?') : 'Wer hat das ' + SKT[sk.type] + ' gespielt?';
+  $('#modalBox').innerHTML = `<div class="sk"><h3>Spiel ${g.log.length + 1} eintragen</h3>
+    <label class="l">Spielart</label>${seg('type', types)}
+    ${sk.type === 'ramsch' ? `<div class="seg" style="margin-top:12px">${tog('dm', '🚶 Durchmarsch')}</div>
+    ${sk.dm ? '' : `<label class="l">Jungfrauen – keinen Stich (je ×2)</label>${seg('jf', [0, 1, 2, 3].map(n => [n, n ? n + '× 👰' : 'keine']))}`}` : ''}
+    <label class="l">${who}</label><div class="chips">${g.players.map((p, i) => `<button class="chip ${sk.pl.includes(i) ? 'on' : ''}" data-act="skSet" data-k="pl" data-v="${i}">${esc(p.name)}</button>`).join('')}</div>
+    ${sk.type !== 'ramsch' ? `<label class="l">Ergebnis für ${sk.type === 'sau' ? 'die Spieler' : 'den Spieler'}</label>${seg('won', [[1, '✅ Gewonnen'], [0, '❌ Verloren']])}
+    <label class="l">Zusätze</label><div class="seg">${tog('sn', '✂️ Schneider')}${tog('sw', '⚫ Schwarz')}</div>
+    <label class="l">Laufende (zählen ab ${thr})</label>${seg('lf', [[0, '–'], ...Array.from({length: 9 - thr}, (_, i) => [thr + i, thr + i])])}` : ''}
+    <label class="l">Geklopft (je ×2)</label>${seg('kl', [0, 1, 2, 3, 4].map(n => [n, n ? n + '× 👊' : 'nein']))}
+    ${s.kontra ? `<label class="l">Kontra / Re (je ×2)</label><div class="seg">${tog('ko', '🗣️ Kontra')}${tog('re', '🔁 Re')}</div>` : ''}
+    <div class="card" style="margin:14px 0 10px;text-align:center">${r ? g.players.map((p, i) => `<div class="hist"><span>${esc(p.name)}</span><b class="${r.d[i] > 0 ? 'plus' : 'minus'}">${eur(r.d[i], true)}</b></div>`).join('') : '<span class="muted">Bitte Spieler auswählen</span>'}</div>
+    <button class="btn ok" data-act="skSave" ${r ? '' : 'disabled'}>Spiel speichern</button></div>`;
+  $('#modal').classList.add('on');
+}
 function closeModal() { $('#modal').classList.remove('on'); }
 
 function applyPM(g, pi) {
@@ -610,6 +803,21 @@ function finishCabo() {
     <p style="margin:0 0 12px;color:var(--dim)">💀 ${losers.map(esc).join(' &amp; ')} über ${g.settings.limit}</p>
     <div style="margin-bottom:16px">${sorted.map((p, i) => `<div class="rank"><span>${medal[i] || (i + 1) + '.'} ${esc(p.name)}</span><b>${p.total}</b></div>`).join('')}</div>
     <button class="btn ok" data-act="winNewC">Neues Spiel</button><button class="btn" data-act="winMenuC">Zum Menü</button>`;
+  $('#win').classList.add('on');
+  fanfare(); confetti();
+}
+
+function finishSchafkopf() {
+  const st = G('schafkopf'), g = st.current, max = Math.max(...g.players.map(p => p.total));
+  const winners = g.players.filter(p => p.total === max).map(p => p.name);
+  st.history.push({id: g.id, date: Date.now(), winners: winners.map(w => w.toLowerCase()), players: g.players.map(p => ({name: p.name, total: p.total, solo: p.solo})), log: g.log.map(r => r.d), games: g.log});
+  st.current = null; save();
+  const medal = ['🥇', '🥈', '🥉'];
+  const sorted = g.players.slice().sort((a, b) => b.total - a.total);
+  $('#winBox').innerHTML = `<div class="trophy">🐑</div><p style="margin:0;color:var(--dim)">${g.log.length} Spiele · ${winners.length > 1 ? 'Gewinner' : 'Gewinner des Abends'}</p>
+    <h2>${winners.map(esc).join(' &amp; ')}</h2><p style="margin:0 0 12px;font-size:20px">${eur(max, true)}</p>
+    <div style="margin-bottom:16px">${sorted.map((p, i) => `<div class="rank"><span>${medal[i] || (i + 1) + '.'} ${esc(p.name)}</span><b class="${p.total > 0 ? 'plus' : p.total < 0 ? 'minus' : ''}">${eur(p.total, true)}</b></div>`).join('')}</div>
+    <button class="btn ok" data-act="winPayS">💸 Weiter: Wer zahlt wem?</button>`;
   $('#win').classList.add('on');
   fanfare(); confetti();
 }
