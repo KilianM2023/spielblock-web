@@ -221,10 +221,10 @@ function stats(k) {
 function statsView(key, extra, o = {}) {
   const st = stats(key), h = G(key).history, f = o.fmt || (v => v);
   if (!st.length) return '<p class="muted" style="margin-top:40px">Noch keine abgeschlossenen Spiele.</p>';
-  return st.map((s, i) => `<div class="card"><div class="name">${i === 0 ? '🏆 ' : ''}${esc(s.name)}</div>
+  return (o.list ? '' : st.map((s, i) => `<div class="card"><div class="name">${i === 0 ? '🏆 ' : ''}${esc(s.name)}</div>
     <div class="stat"><div>${s.games}<span>${o.games || 'Spiele'}</span></div><div>${s.wins}<span>Siege</span></div><div>${Math.round(100 * s.wins / s.games)}%<span>Siegquote</span></div>
-    ${o.sum ? `<div>${f(s.sum)}<span>Gesamt</span></div>` : ''}<div>${f(Math.round(s.sum / s.games))}<span>${o.avg || 'Ø Punkte'}</span></div><div>${f(s.best)}<span>Bestwert</span></div>${extra ? `<div>${s[extra.key]}<span>${extra.label}</span></div>` : ''}</div></div>`).join('') +
-    `<label class="l">Letzte Spiele</label><div class="card">${h.slice(-10).reverse().map((g, k) => `<div class="hist" ${key === 'schafkopf' && g.log ? `data-act="sHist" data-i="${h.length - 1 - k}" style="cursor:pointer"` : ''}><span>${new Date(g.date).toLocaleDateString('de-DE')}${key === 'schafkopf' && g.log ? ' <span style="color:var(--acc)">›</span>' : ''}</span><span style="text-align:right">${g.players.slice().sort((a, b) => key === 'cabo' ? a.total - b.total : b.total - a.total).map(p => `${g.winners.includes(p.name.toLowerCase()) ? '🏆' : ''}${esc(p.name)} ${f(p.total)}`).join(' · ')}</span></div>`).join('')}</div>
+    ${o.sum ? `<div>${f(s.sum)}<span>Gesamt</span></div>` : ''}<div>${f(Math.round(s.sum / s.games))}<span>${o.avg || 'Ø Punkte'}</span></div><div>${f(s.best)}<span>Bestwert</span></div>${extra ? `<div>${s[extra.key]}<span>${extra.label}</span></div>` : ''}</div></div>`).join('')) +
+    `<label class="l">${o.list ? 'Letzte Abende' : 'Letzte Spiele'}</label><div class="card">${h.slice(-10).reverse().map((g, k) => `<div class="hist" ${key === 'schafkopf' && g.log ? `data-act="sHist" data-i="${h.length - 1 - k}" style="cursor:pointer"` : ''}><span style="white-space:nowrap">${new Date(g.date).toLocaleDateString('de-DE')}${key === 'schafkopf' && g.log ? ' <span style="color:var(--acc)">›</span>' : ''}</span><span style="text-align:right">${g.players.slice().sort((a, b) => key === 'cabo' ? a.total - b.total : b.total - a.total).map(p => `${g.winners.includes(p.name.toLowerCase()) ? '🏆' : ''}${esc(p.name)} ${f(p.total)}`).join(' · ')}</span></div>`).join('')}</div>
     <button class="btn bad" data-act="resetStats" data-game="${key}" style="margin-top:8px">Statistik zurücksetzen</button>`;
 }
 
@@ -340,7 +340,7 @@ const VIEWS = {
       <button class="btn ok" data-act="newGame" data-game="schafkopf">Neuer Abend</button>
       <button class="btn" data-act="go" data-v="smenu">Zum Menü</button>`;
   },
-  sstats() { return statsView('schafkopf', {key: 'solo', label: 'Solos'}, {fmt: v => eur(v, true), avg: 'Ø pro Abend', sum: true, games: 'Abende'}); },
+  sstats() { return statsView('schafkopf', {key: 'solo', label: 'Solos'}, {fmt: v => eur(v, true), avg: 'Ø pro Abend', sum: true, games: 'Abende', list: true}); },
   ssettings() {
     const s = sset();
     const num = (k, l) => `<div class="set"><span>${l}</span><input type="number" inputmode="numeric" data-set="${k}" data-game="schafkopf" value="${s[k]}"></div>`;
