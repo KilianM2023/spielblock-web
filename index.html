@@ -161,7 +161,9 @@ const SDEF = {sau: 10, solo: 50, ramsch: 10, durch: 50, extra: 10, lfSau: 3, lfS
 const sset = () => ({...SDEF, ...G('schafkopf').settings});
 const SKT = {sau: 'Sauspiel', solo: 'Solo', wenz: 'Wenz', ramsch: 'Ramsch'};
 const eur = (c, sign) => (sign && c > 0 ? '+' : '') + (c / 100).toFixed(2).replace('.', ',') + ' €';
-const DEFS = {kniffel: KDEF, tutto: TDEF, cabo: CDEF, schafkopf: SDEF};
+const WDEF = {base: 20, per: 10, miss: 10, noEven: false};
+const wset = () => ({...WDEF, ...G('wizard').settings});
+const DEFS = {kniffel: KDEF, tutto: TDEF, cabo: CDEF, schafkopf: SDEF, wizard: WDEF};
 const TCARDS = {
   b200: {sym: '⭐', big: '200', name: 'Bonus', co: '+200', c: 'linear-gradient(145deg,#ffb938,#e07b12)'},
   b300: {sym: '⭐', big: '300', name: 'Bonus', co: '+300', c: 'linear-gradient(145deg,#ffb938,#e07b12)'},
@@ -213,7 +215,7 @@ function stats(k) {
   for (const g of G(k).history) for (const p of g.players) {
     const key = p.name.toLowerCase();
     const s = m[key] || (m[key] = {name: p.name, games: 0, wins: 0, sum: 0, best: 0, kn: 0});
-    s.name = p.name; s.games++; s.sum += p.total; s.best = s.games === 1 ? p.total : low ? Math.min(s.best, p.total) : Math.max(s.best, p.total); s.kn += p.kn || 0; s.solo = (s.solo || 0) + (p.solo || 0);
+    s.name = p.name; s.games++; s.sum += p.total; s.best = s.games === 1 ? p.total : low ? Math.min(s.best, p.total) : Math.max(s.best, p.total); s.kn += p.kn || 0; s.solo = (s.solo || 0) + (p.solo || 0); s.hit = (s.hit || 0) + (p.hit || 0);
     if (g.winners.includes(key)) s.wins++;
   }
   return Object.values(m).sort((a, b) => b.wins - a.wins || (low ? -1 : 1) * (b.sum / b.games - a.sum / a.games));
@@ -229,8 +231,8 @@ function statsView(key, extra, o = {}) {
 }
 
 /* ---------- Navigation ---------- */
-const BACK = {kmenu: 'home', ksetup: 'kmenu', kgame: 'kmenu', kstats: 'kmenu', ksettings: 'kmenu', tmenu: 'home', tsetup: 'tmenu', tgame: 'tmenu', tstats: 'tmenu', tsettings: 'tmenu', cmenu: 'home', csetup: 'cmenu', cgame: 'cmenu', cstats: 'cmenu', csettings: 'cmenu', smenu: 'home', ssetup: 'smenu', sgame: 'smenu', sstats: 'smenu', ssettings: 'smenu', schart: 'sgame', spay: 'smenu', sevening: 'sstats'};
-const TITLE = {home: 'Spielblock', kmenu: 'Kniffel', ksetup: 'Neues Spiel', kgame: 'Kniffel', kstats: 'Statistik', ksettings: 'Einstellungen', tmenu: 'Tutto', tsetup: 'Neues Spiel', tgame: 'Tutto', tstats: 'Statistik', tsettings: 'Einstellungen', cmenu: 'Cabo', csetup: 'Neues Spiel', cgame: 'Cabo', cstats: 'Statistik', csettings: 'Einstellungen', smenu: 'Schafkopf', ssetup: 'Neuer Abend', sgame: 'Schafkopf', sstats: 'Statistik', ssettings: 'Einstellungen', schart: 'Verlauf', spay: 'Abrechnung', sevening: 'Spieleabend'};
+const BACK = {kmenu: 'home', ksetup: 'kmenu', kgame: 'kmenu', kstats: 'kmenu', ksettings: 'kmenu', tmenu: 'home', tsetup: 'tmenu', tgame: 'tmenu', tstats: 'tmenu', tsettings: 'tmenu', cmenu: 'home', csetup: 'cmenu', cgame: 'cmenu', cstats: 'cmenu', csettings: 'cmenu', smenu: 'home', ssetup: 'smenu', sgame: 'smenu', sstats: 'smenu', ssettings: 'smenu', schart: 'sgame', spay: 'smenu', sevening: 'sstats', wmenu: 'home', wsetup: 'wmenu', wgame: 'wmenu', wstats: 'wmenu', wsettings: 'wmenu'};
+const TITLE = {home: 'Spielblock', kmenu: 'Kniffel', ksetup: 'Neues Spiel', kgame: 'Kniffel', kstats: 'Statistik', ksettings: 'Einstellungen', tmenu: 'Tutto', tsetup: 'Neues Spiel', tgame: 'Tutto', tstats: 'Statistik', tsettings: 'Einstellungen', cmenu: 'Cabo', csetup: 'Neues Spiel', cgame: 'Cabo', cstats: 'Statistik', csettings: 'Einstellungen', smenu: 'Schafkopf', ssetup: 'Neuer Abend', sgame: 'Schafkopf', sstats: 'Statistik', ssettings: 'Einstellungen', schart: 'Verlauf', spay: 'Abrechnung', sevening: 'Spieleabend', wmenu: 'Wizard', wsetup: 'Neues Spiel', wgame: 'Wizard', wstats: 'Statistik', wsettings: 'Einstellungen'};
 let view = 'home', setup = {game: 'kniffel', n: 2, names: ['', '']};
 function go(v) { view = v; render(); $('#app').scrollTop = 0; }
 $('#back').onclick = () => { const b = (view === 'schart' ? chartSrc?.chartBack : view === 'spay' ? chartSrc?.payBack : null) || BACK[view]; if (b) go(b); };
@@ -248,7 +250,46 @@ const VIEWS = {
       <button class="big" data-act="go" data-v="kmenu"><span class="ic">🎲</span><span>Kniffel<small>Würfelblock mit 13 Feldern</small></span></button>
       <button class="big" data-act="go" data-v="tmenu"><span class="ic">🎯</span><span>Tutto<small>Würfeln bis 6.000 Punkte</small></span></button>
       <button class="big" data-act="go" data-v="cmenu"><span class="ic">🃏</span><span>Cabo<small>Unter 100 Punkten bleiben</small></span></button>
-      <button class="big" data-act="go" data-v="smenu"><span class="ic">🐑</span><span>Schafkopf<small>Spieleabend abrechnen</small></span></button>`;
+      <button class="big" data-act="go" data-v="smenu"><span class="ic">🐑</span><span>Schafkopf<small>Spieleabend abrechnen</small></span></button>
+      <button class="big" data-act="go" data-v="wmenu"><span class="ic">🧙</span><span>Wizard<small>Stiche richtig ansagen</small></span></button>`;
+  },
+  wmenu() {
+    const cur = G('wizard').current;
+    return `<button class="big" data-act="newGame" data-game="wizard"><span class="ic">✨</span><span>Neues Spiel</span></button>
+      <button class="big" data-act="go" data-v="wgame" ${cur ? '' : 'disabled'}><span class="ic">▶️</span><span>Spiel fortsetzen<small>${cur ? esc(cur.players.map(p => p.name).join(', ')) + ' · Runde ' + (cur.log.length + 1) + '/' + cur.rounds : 'kein laufendes Spiel'}</small></span></button>
+      <button class="big" data-act="go" data-v="wstats"><span class="ic">📊</span><span>Statistik</span></button>
+      <button class="big" data-act="go" data-v="wsettings"><span class="ic">⚙️</span><span>Spieleinstellungen<small>Punkte &amp; Ansage-Regel</small></span></button>`;
+  },
+  wgame() {
+    const g = G('wizard').current; if (!g) return '<p class="muted">Kein laufendes Spiel.</p>';
+    const r = g.log.length + 1, dl = (r - 1) % g.players.length, bid = g.bids, max = Math.max(...g.players.map(p => p.total));
+    const sum = bid ? bid.reduce((a, b) => a + b, 0) : 0;
+    return `<p class="muted" style="margin-top:0">Runde ${r} von ${g.rounds} · ${r} ${r === 1 ? 'Karte' : 'Karten'} · 🃏 gibt: ${esc(g.players[dl].name)}</p>
+      ${g.players.map((p, i) => `<div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span class="name">${i === dl ? '🃏 ' : ''}${esc(p.name)}</span>
+          <span style="font-size:26px;font-weight:800;${p.total === max && g.log.length ? 'color:var(--gold)' : ''}">${p.total}</span>
+        </div>
+        <div class="hint" style="margin-top:6px">${g.log.slice(-6).map(l => (l.pts[i] > 0 ? '+' : '') + l.pts[i]).join('  ·  ') || '&nbsp;'}${bid ? `<span style="float:right;color:var(--txt);font-size:14px">🔮 Ansage ${bid[i]}</span>` : ''}</div>
+      </div>`).join('')}
+      ${bid ? `<p class="muted">Angesagt: ${sum} von ${r} ${sum > r ? '· überreizt' : sum < r ? '· unterreizt' : ''}</p>
+      <button class="btn ok" data-act="wTricks">✅ Stiche eintragen</button>` : '<button class="btn acc" data-act="wBids">🔮 Ansagen eintragen</button>'}
+      ${bid || g.log.length ? `<button class="btn" data-act="wUndo">↩️ ${bid ? 'Ansagen löschen' : 'Letzte Runde rückgängig'}</button>` : ''}
+      ${g.log.length ? `<details class="card" style="margin-top:12px"><summary style="font-weight:600">Spielblock anzeigen</summary>
+      <table class="tab"><tr><th>Rd.</th>${g.players.map(p => `<th>${esc(p.name)}</th>`).join('')}</tr>
+      ${g.log.map((l, j) => `<tr><td>${j + 1}</td>${l.cum.map((c, i) => `<td>${c}<span class="hint ${l.bids[i] === l.tricks[i] ? 'plus' : 'minus'}">${l.bids[i]}/${l.tricks[i]}</span></td>`).join('')}</tr>`).join('')}</table>
+      <p class="hint" style="margin-top:8px">Klein: Ansage/Stiche</p></details>` : ''}
+      <div style="height:8px"></div>
+      <button class="btn bad" data-act="abortW">Spiel abbrechen (nicht werten)</button>`;
+  },
+  wstats() { return statsView('wizard', {key: 'hit', label: 'Treffer'}); },
+  wsettings() {
+    const s = wset();
+    const num = (k, l) => `<div class="set"><span>${l}</span><input type="number" inputmode="numeric" data-set="${k}" data-game="wizard" value="${s[k]}"></div>`;
+    return `<p class="muted" style="margin-top:0">Änderungen gelten für neue Spiele.</p>
+      <div class="card">${num('base', 'Richtig angesagt')}${num('per', 'Plus je Stich')}${num('miss', 'Minus je Stich daneben')}</div>
+      <div class="card"><div class="set"><span>Ansagen dürfen nicht aufgehen<br><small style="color:var(--dim)">Summe der Ansagen ≠ Anzahl Karten</small></span><button class="tog ${s.noEven ? 'on' : ''}" data-act="tog" data-k="noEven" data-game="wizard"></button></div></div>
+      <button class="btn" data-act="defaults" data-game="wizard">Standardregeln wiederherstellen</button>`;
   },
   kmenu() {
     const cur = G('kniffel').current;
@@ -368,7 +409,7 @@ const VIEWS = {
   ksetup() {
     const known = allNames(), used = setup.names.map(n => n.trim().toLowerCase());
     return `${setup.game === 'schafkopf' ? '<p class="muted" style="margin-top:0">Schafkopf wird zu viert gespielt.</p>' : `<label class="l">Anzahl Spieler</label>
-      <div class="seg">${[1,2,3,4,5,6].map(n => `<button class="${n === setup.n ? 'on' : ''}" data-act="cnt" data-n="${n}">${n}</button>`).join('')}</div>`}
+      <div class="seg">${(setup.game === 'wizard' ? [3,4,5,6] : [1,2,3,4,5,6]).map(n => `<button class="${n === setup.n ? 'on' : ''}" data-act="cnt" data-n="${n}">${n}</button>`).join('')}</div>`}
       <label class="l">Namen</label>
       ${setup.names.map((n, i) => `<input class="inp" data-i="${i}" value="${esc(n)}" placeholder="Spieler ${i + 1}" maxlength="14" autocapitalize="words" autocomplete="off">`).join('')}
       ${Object.keys(known).length ? `<label class="l">Bekannte Spieler (antippen)</label>
@@ -436,12 +477,12 @@ const VIEWS = {
       <button class="btn" data-act="defaults" data-game="tutto">Standardregeln wiederherstellen</button>`;
   },
 };
-VIEWS.tsetup = VIEWS.csetup = VIEWS.ssetup = VIEWS.ksetup;
+VIEWS.tsetup = VIEWS.csetup = VIEWS.ssetup = VIEWS.wsetup = VIEWS.ksetup;
 
 /* ---------- Aktionen ---------- */
 const ACT = {
   go: d => go(d.v),
-  newGame(d) { const game = d.game || 'kniffel'; const n = game === 'schafkopf' ? 4 : 2; setup = {game, n, names: Array(n).fill('')}; go(game[0] + 'setup'); },
+  newGame(d) { const game = d.game || 'kniffel'; const n = game === 'schafkopf' ? 4 : game === 'wizard' ? 3 : 2; setup = {game, n, names: Array(n).fill('')}; go(game[0] + 'setup'); },
   cnt(d) { const n = +d.n; setup.names = Array.from({length: n}, (_, i) => setup.names[i] || ''); setup.n = n; render(); },
   chip(d) {
     if (setup.names.some(x => x.trim().toLowerCase() === d.name.toLowerCase())) return;
@@ -463,6 +504,9 @@ const ACT = {
     } else if (key === 'cabo') {
       G(key).current = {id: Date.now(), settings: cset(), players: names.map(name => ({name, total: 0})), log: []};
       save(); go('cgame');
+    } else if (key === 'wizard') {
+      G(key).current = {id: Date.now(), settings: wset(), players: names.map(name => ({name, total: 0, hit: 0})), log: [], bids: null, rounds: Math.floor(60 / names.length)};
+      save(); go('wgame');
     } else {
       const digital = tset().deck === 'digital';
       G(key).current = {id: Date.now(), settings: tset(), players: names.map(name => ({name, total: 0, turns: []})), turn: 0, targetReached: false, digital, deck: digital ? newDeck() : [], card: null};
@@ -614,6 +658,32 @@ const ACT = {
   abortC() { if (confirm('Spiel wirklich abbrechen? Es wird nicht in die Statistik aufgenommen.')) { G('cabo').current = null; save(); go('cmenu'); } },
   winMenuC() { $('#win').classList.remove('on'); go('cmenu'); },
   winNewC() { $('#win').classList.remove('on'); ACT.newGame({game: 'cabo'}); },
+  wBids() { wz = {k: 'bids', v: G('wizard').current.players.map(() => 0)}; wModal(); },
+  wTricks() { wz = {k: 'tricks', v: [...G('wizard').current.bids]}; wModal(); },
+  wStep(d) { const r = G('wizard').current.log.length + 1, i = +d.p; wz.v[i] = Math.max(0, Math.min(r, wz.v[i] + +d.v)); wModal(); },
+  wSave() {
+    const g = G('wizard').current, s = g.settings;
+    if (wz.k === 'bids') { g.bids = [...wz.v]; save(); closeModal(); return render(); }
+    const t = wz.v, pts = g.bids.map((b, i) => b === t[i] ? s.base + s.per * t[i] : -s.miss * Math.abs(b - t[i]));
+    g.players.forEach((p, i) => { p.total += pts[i]; if (g.bids[i] === t[i]) p.hit++; });
+    g.log.push({bids: g.bids, tricks: [...t], pts, cum: g.players.map(p => p.total)});
+    g.bids = null; save(); closeModal();
+    if (g.log.length >= g.rounds) finishWizard(); else render();
+  },
+  wUndo() {
+    const g = G('wizard').current;
+    if (g.bids) { if (!confirm('Ansagen dieser Runde löschen?')) return; g.bids = null; }
+    else {
+      if (!confirm('Letzte Runde wirklich löschen?')) return;
+      const l = g.log.pop();
+      g.players.forEach((p, i) => { p.total -= l.pts[i]; if (l.bids[i] === l.tricks[i]) p.hit--; });
+      g.bids = l.bids;
+    }
+    save(); render();
+  },
+  abortW() { if (confirm('Spiel wirklich abbrechen? Es wird nicht in die Statistik aufgenommen.')) { G('wizard').current = null; save(); go('wmenu'); } },
+  winMenuW() { $('#win').classList.remove('on'); go('wmenu'); },
+  winNewW() { $('#win').classList.remove('on'); ACT.newGame({game: 'wizard'}); },
   winMenuT() { $('#win').classList.remove('on'); go('tmenu'); },
   winNewT() { $('#win').classList.remove('on'); ACT.newGame({game: 'tutto'}); },
 };
@@ -631,7 +701,19 @@ document.addEventListener('change', e => {
   if (t.dataset.set) { const v = Math.max(0, parseInt(t.value, 10) || 0); G(t.dataset.game || 'kniffel').settings[t.dataset.set] = v; save(); }
 });
 
-let cr = {caller: -1, zero: {}}, sk = null, chartSrc = null;
+let cr = {caller: -1, zero: {}}, sk = null, chartSrc = null, wz = null;
+function wModal() {
+  const g = G('wizard').current, n = g.players.length, r = g.log.length + 1, dl = (r - 1) % n, bids = wz.k === 'bids';
+  const order = Array.from({length: n}, (_, j) => (dl + 1 + j) % n), sum = wz.v.reduce((a, b) => a + b, 0);
+  const bad = bids ? g.settings.noEven && sum === r : sum !== r;
+  const msg = !bad ? '' : bids ? `⚠️ Die Ansagen dürfen nicht aufgehen – ${esc(g.players[order[n - 1]].name)} muss anders ansagen.` : `⚠️ Es müssen genau ${r} Stiche sein.`;
+  $('#modalBox').innerHTML = `<h3>Runde ${r}: ${bids ? 'Ansagen' : 'Stiche'}</h3><p>${bids ? 'Wie viele Stiche sagt jeder an? Reihenfolge ab links vom Geber.' : 'Wie viele Stiche hat jeder bekommen?'}</p>
+    ${order.map(i => `<div class="crow"><span class="nm">${esc(g.players[i].name)}${bids ? '' : `<span class="hint ${g.bids[i] === wz.v[i] ? 'plus' : ''}">Ansage ${g.bids[i]}${g.bids[i] === wz.v[i] ? ' ✓' : ''}</span>`}</span>
+      <button data-act="wStep" data-p="${i}" data-v="-1">−</button><span style="width:44px;text-align:center;font-size:22px;font-weight:800">${wz.v[i]}</span><button data-act="wStep" data-p="${i}" data-v="1">+</button></div>`).join('')}
+    <p style="margin:4px 0 12px;font-size:15px;text-align:center">Summe: <b>${sum}</b> von ${r}${msg ? `<br><span class="minus">${msg}</span>` : ''}</p>
+    <button class="btn ok" data-act="wSave" ${bad ? 'disabled' : ''}>${bids ? 'Ansagen speichern' : 'Runde werten'}</button>`;
+  $('#modal').classList.add('on');
+}
 function drawChart() {
   const c = chartSrc, box = $('#chartSvg'); if (!box) return;
   const cum = c.names.map((_, i) => { let t = 0; return [0, ...c.log.map(d => t += d[i])]; });
@@ -803,6 +885,21 @@ function finishCabo() {
     <p style="margin:0 0 12px;color:var(--dim)">💀 ${losers.map(esc).join(' &amp; ')} über ${g.settings.limit}</p>
     <div style="margin-bottom:16px">${sorted.map((p, i) => `<div class="rank"><span>${medal[i] || (i + 1) + '.'} ${esc(p.name)}</span><b>${p.total}</b></div>`).join('')}</div>
     <button class="btn ok" data-act="winNewC">Neues Spiel</button><button class="btn" data-act="winMenuC">Zum Menü</button>`;
+  $('#win').classList.add('on');
+  fanfare(); confetti();
+}
+
+function finishWizard() {
+  const st = G('wizard'), g = st.current, max = Math.max(...g.players.map(p => p.total));
+  const winners = g.players.filter(p => p.total === max).map(p => p.name);
+  st.history.push({id: g.id, date: Date.now(), winners: winners.map(w => w.toLowerCase()), players: g.players.map(p => ({name: p.name, total: p.total, hit: p.hit}))});
+  st.current = null; save();
+  const medal = ['🥇', '🥈', '🥉'];
+  const sorted = g.players.slice().sort((a, b) => b.total - a.total);
+  $('#winBox').innerHTML = `<div class="trophy">🧙</div><p style="margin:0;color:var(--dim)">${winners.length > 1 ? 'Unentschieden – Gewinner' : 'Gewinner'}</p>
+    <h2>${winners.map(esc).join(' &amp; ')}</h2><p style="margin:0 0 12px;font-size:20px">${max} Punkte</p>
+    <div style="margin-bottom:16px">${sorted.map((p, i) => `<div class="rank"><span>${medal[i] || (i + 1) + '.'} ${esc(p.name)} <small style="color:var(--dim)">🎯 ${p.hit}/${g.rounds}</small></span><b>${p.total}</b></div>`).join('')}</div>
+    <button class="btn ok" data-act="winNewW">Neues Spiel</button><button class="btn" data-act="winMenuW">Zum Menü</button>`;
   $('#win').classList.add('on');
   fanfare(); confetti();
 }
