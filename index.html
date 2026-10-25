@@ -156,13 +156,15 @@ const TDEF = {target: 6000, deck: 'real'};
 const CDEF = {limit: 100, reset: true, kami: true, joker: true};
 const ZERO = {kami: '💥', joker: '🃏'};
 const cset = () => ({...CDEF, ...G('cabo').settings});
-const SERIES = ['#3987e5', '#d95926', '#199e70', '#c98500'];
+const SERIES = ['#3987e5', '#d95926', '#199e70', '#c98500', '#9b5de5', '#d6457f'];
 const SDEF = {sau: 10, solo: 50, ramsch: 10, durch: 50, extra: 10, lfSau: 3, lfSolo: 3, lfWenz: 2, ramschOn: true, kontra: true};
 const sset = () => ({...SDEF, ...G('schafkopf').settings});
 const SKT = {sau: 'Sauspiel', solo: 'Solo', wenz: 'Wenz', ramsch: 'Ramsch'};
 const eur = (c, sign) => (sign && c > 0 ? '+' : '') + (c / 100).toFixed(2).replace('.', ',') + ' €';
-const WDEF = {base: 20, per: 10, miss: 10, noEven: false, special: true};
+const WDEF = {base: 20, per: 10, miss: 10, noEven: false, special: true, sonder: 9};
 const wset = () => ({...WDEF, ...G('wizard').settings});
+// 60 Charakterkarten + bis zu 9 Sonderkarten der Jubiläumsedition
+const wRounds = (s, n) => Math.floor((60 + Math.min(9, s.sonder || 0)) / n);
 const wEff = (l, i) => l.bids[i] + (l.adj ? l.adj[i] : 0);
 const DEFS = {kniffel: KDEF, tutto: TDEF, cabo: CDEF, schafkopf: SDEF, wizard: WDEF};
 const TCARDS = {
@@ -243,6 +245,11 @@ function render() {
   $('#back').style.visibility = BACK[view] ? 'visible' : 'hidden';
   $('#app').innerHTML = VIEWS[view]();
   if (view === 'schart') drawChart();
+  if (view === 'wgame' && G('wizard').current?.log.length) {
+    const g = G('wizard').current;
+    chartSrc = {names: g.players.map(p => p.name), log: g.log.map(l => l.pts), unit: 'Runde', fmt: v => (v > 0 ? '+' : '') + v, ax: v => v};
+    drawChart();
+  }
 }
 
 const VIEWS = {
@@ -276,7 +283,8 @@ const VIEWS = {
       ${bid ? `<p class="muted">Angesagt: ${sum} von ${r} ${sum > r ? '· überreizt' : sum < r ? '· unterreizt' : ''}</p>
       <button class="btn ok" data-act="wTricks">✅ Stiche eintragen</button>` : '<button class="btn acc" data-act="wBids">🔮 Ansagen eintragen</button>'}
       ${bid || g.log.length ? `<button class="btn" data-act="wUndo">↩️ ${bid ? 'Ansagen löschen' : 'Letzte Runde rückgängig'}</button>` : ''}
-      ${g.log.length ? `<details class="card" style="margin-top:12px"><summary style="font-weight:600">Spielblock anzeigen</summary>
+      ${g.log.length ? `<label class="l">Verlauf</label><div class="chart" id="chart">${wLead(g)}<div class="legend">${g.players.map((p, i) => `<span><span class="sw" style="background:${SERIES[i]}"></span>${esc(p.name)}</span>`).join('')}</div><div id="chartSvg"></div><div class="tip" id="tip"></div></div>
+      <details class="card" style="margin-top:12px"><summary style="font-weight:600">Spielblock anzeigen</summary>
       <table class="tab"><tr><th>Rd.</th>${g.players.map(p => `<th>${esc(p.name)}</th>`).join('')}</tr>
       ${g.log.map((l, j) => `<tr><td>${j + 1}${l.bomb ? '<span class="hint">💣' + (l.bomb > 1 ? l.bomb : '') + '</span>' : ''}</td>${l.cum.map((c, i) => `<td>${c}<span class="hint ${wEff(l, i) === l.tricks[i] ? 'plus' : 'minus'}">${l.adj && l.adj[i] ? '☁️' : ''}${wEff(l, i)}/${l.tricks[i]}</span></td>`).join('')}</tr>`).join('')}</table>
       <p class="hint" style="margin-top:8px">Klein: Ansage/Stiche${g.settings.special ? ' · ☁️ Ansage durch Wolke geändert · 💣 Stich durch Bombe verfallen' : ''}</p></details>` : ''}
@@ -290,6 +298,7 @@ const VIEWS = {
     return `<p class="muted" style="margin-top:0">Änderungen gelten für neue Spiele.</p>
       <div class="card">${num('base', 'Richtig angesagt')}${num('per', 'Plus je Stich')}${num('miss', 'Minus je Stich daneben')}</div>
       <div class="card"><div class="set"><span>Ansagen dürfen nicht aufgehen<br><small style="color:var(--dim)">Summe der Ansagen ≠ Anzahl Karten</small></span><button class="tog ${s.noEven ? 'on' : ''}" data-act="tog" data-k="noEven" data-game="wizard"></button></div>
+      <div class="set"><span>Sonderkarten im Stapel (0–9)<br><small style="color:var(--dim)">Mehr Karten = mehr Runden: (60 + Sonderkarten) ÷ Spieler</small></span><input type="number" inputmode="numeric" data-set="sonder" data-game="wizard" value="${s.sonder}" style="width:74px"></div>
       <div class="set"><span>Jubiläums-Sonderkarten<br><small style="color:var(--dim)">💣 Bombe: Stich geht an niemand · ☁️ Wolke: Gewinner ändert Ansage um ±1</small></span><button class="tog ${s.special ? 'on' : ''}" data-act="tog" data-k="special" data-game="wizard"></button></div></div>
       <button class="btn" data-act="defaults" data-game="wizard">Standardregeln wiederherstellen</button>`;
   },
@@ -507,7 +516,7 @@ const ACT = {
       G(key).current = {id: Date.now(), settings: cset(), players: names.map(name => ({name, total: 0})), log: []};
       save(); go('cgame');
     } else if (key === 'wizard') {
-      G(key).current = {id: Date.now(), settings: wset(), players: names.map(name => ({name, total: 0, hit: 0})), log: [], bids: null, rounds: Math.floor(60 / names.length)};
+      G(key).current = {id: Date.now(), settings: wset(), players: names.map(name => ({name, total: 0, hit: 0})), log: [], bids: null, rounds: wRounds(wset(), names.length)};
       save(); go('wgame');
     } else {
       const digital = tset().deck === 'digital';
@@ -723,9 +732,15 @@ function wModal() {
       ${sp ? `<button class="${wz.adj[i] ? 'on' : ''}" data-act="wCloud" data-p="${i}" style="font-size:${wz.adj[i] ? 13 : 18}px">☁️${wz.adj[i] > 0 ? '+1' : wz.adj[i] < 0 ? '−1' : ''}</button>` : ''}
       <button data-act="wStep" data-p="${i}" data-v="-1">−</button><span style="width:44px;text-align:center;font-size:22px;font-weight:800">${wz.v[i]}</span><button data-act="wStep" data-p="${i}" data-v="1">+</button></div>`).join('')}
     <p style="margin:4px 0 12px;font-size:15px;text-align:center">Summe: <b>${sum}</b> von ${total}${msg ? `<br><span class="minus">${msg}</span>` : ''}</p>
-    ${sp ? '<p class="hint" style="text-align:center;margin:-6px 0 12px">☁️ antippen: Wer den Wolken-Stich gewinnt, ändert seine Ansage um +1 oder −1 (nicht, wenn auch die Bombe im Stich lag).</p>' : ''}
     <button class="btn ok" data-act="wSave" ${bad ? 'disabled' : ''}>${bids ? 'Ansagen speichern' : 'Runde werten'}</button>`;
   $('#modal').classList.add('on');
+}
+function wLead(g) {
+  const s = g.players.map((p, i) => ({p, i})).sort((a, b) => b.p.total - a.p.total), lead = s.filter(o => o.p.total === s[0].p.total);
+  const last = g.log.at(-1).pts, best = Math.max(...last), top = g.players.filter((_, i) => last[i] === best);
+  const gap = lead.length < s.length ? ` · ${s[0].p.total - s[lead.length].p.total} vor ${esc(s[lead.length].p.name)}` : '';
+  return `<div style="padding:0 8px 6px;font-size:14px"><b>🥇 ${lead.length > 1 ? 'Gleichstand: ' : 'Führt: '}${lead.map(o => esc(o.p.name)).join(' &amp; ')}</b>${gap}
+    <span class="hint" style="font-size:12px">Runde ${g.log.length}: bester Zug ${top.map(p => esc(p.name)).join(', ')} (${best > 0 ? '+' : ''}${best})</span></div>`;
 }
 function drawChart() {
   const c = chartSrc, box = $('#chartSvg'); if (!box) return;
@@ -736,7 +751,8 @@ function drawChart() {
   const y0 = Math.floor(lo / step) * step, y1 = Math.max(Math.ceil(hi / step) * step, y0 + step);
   const x = j => L + (W - L - Rt) * (n ? j / n : 0), y = v => T + (H - T - B) * (1 - (v - y0) / (y1 - y0));
   let grid = '';
-  for (let v = y0; v <= y1; v += step) grid += `<line x1="${L}" x2="${W - Rt}" y1="${y(v)}" y2="${y(v)}" stroke="${v === 0 ? 'var(--dim)' : 'var(--line)'}" stroke-width="${v === 0 ? 1.5 : 1}" ${v === 0 ? '' : 'stroke-dasharray="2 4"'}/><text class="ax" x="${L - 6}" y="${y(v) + 4}" text-anchor="end">${(v / 100).toFixed(step < 100 ? 1 : 0).replace('.', ',')}€</text>`;
+  const ax = c.ax || (v => (v / 100).toFixed(step < 100 ? 1 : 0).replace('.', ',') + '€'), fmt = c.fmt || (v => eur(v, true)), unit = c.unit || 'Spiel';
+  for (let v = y0; v <= y1; v += step) grid += `<line x1="${L}" x2="${W - Rt}" y1="${y(v)}" y2="${y(v)}" stroke="${v === 0 ? 'var(--dim)' : 'var(--line)'}" stroke-width="${v === 0 ? 1.5 : 1}" ${v === 0 ? '' : 'stroke-dasharray="2 4"'}/><text class="ax" x="${L - 6}" y="${y(v) + 4}" text-anchor="end">${ax(v)}</text>`;
   const xs = Math.max(1, Math.ceil(n / 8));
   for (let j = 0; j <= n; j += xs) grid += `<text class="ax" x="${x(j)}" y="${H - 6}" text-anchor="middle">${j}</text>`;
   const lines = cum.map((s, i) => `<path d="${s.map((v, j) => (j ? 'L' : 'M') + x(j).toFixed(1) + ' ' + y(v).toFixed(1)).join('')}" fill="none" stroke="${SERIES[i]}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`).join('');
@@ -745,13 +761,13 @@ function drawChart() {
   const over = ends.length ? ends.at(-1).ly - (H - B) : 0;
   if (over > 0) ends.forEach(e => e.ly -= over);
   const labels = ends.map(e => `<circle cx="${x(n)}" cy="${e.y}" r="4.5" fill="${SERIES[e.i]}" stroke="var(--card)" stroke-width="2"/><text class="lbl" x="${x(n) + 9}" y="${e.ly + 4}">${esc(c.names[e.i].slice(0, 8))}</text>`).join('');
-  box.innerHTML = `<svg viewBox="0 0 ${W} ${H}" height="${H}" role="img" aria-label="Verlauf der Salden über ${n} Spiele">${grid}${lines}<line id="cross" y1="${T}" y2="${H - B}" stroke="var(--dim)" stroke-width="1" style="display:none"/>${labels}<g id="dots"></g><rect x="${L}" y="0" width="${W - L - Rt}" height="${H}" fill="transparent" id="hit"/></svg>`;
+  box.innerHTML = `<svg viewBox="0 0 ${W} ${H}" height="${H}" role="img" aria-label="Verlauf über ${n} ${unit === 'Spiel' ? 'Spiele' : 'Runden'}">${grid}${lines}<line id="cross" y1="${T}" y2="${H - B}" stroke="var(--dim)" stroke-width="1" style="display:none"/>${labels}<g id="dots"></g><rect x="${L}" y="0" width="${W - L - Rt}" height="${H}" fill="transparent" id="hit"/></svg>`;
   const tip = $('#tip'), cross = $('#cross'), dots = $('#dots'), hit = $('#hit');
   const show = ev => {
     const r = hit.getBoundingClientRect(), j = Math.max(0, Math.min(n, Math.round((ev.clientX - r.left) / r.width * n)));
     cross.setAttribute('x1', x(j)); cross.setAttribute('x2', x(j)); cross.style.display = '';
     dots.innerHTML = cum.map((s, i) => `<circle cx="${x(j)}" cy="${y(s[j])}" r="4.5" fill="${SERIES[i]}" stroke="var(--card)" stroke-width="2"/>`).join('');
-    tip.innerHTML = `<b>${j ? 'Nach Spiel ' + j : 'Start'}</b>` + cum.map((s, i) => ({i, v: s[j]})).sort((a, b) => b.v - a.v).map(o => `<div><span><span class="sw" style="background:${SERIES[o.i]}"></span>${esc(c.names[o.i])}</span><span>${eur(o.v, true)}</span></div>`).join('');
+    tip.innerHTML = `<b>${j ? `Nach ${unit} ${j}` : 'Start'}</b>` + cum.map((s, i) => ({i, v: s[j]})).sort((a, b) => b.v - a.v).map(o => `<div><span><span class="sw" style="background:${SERIES[o.i]}"></span>${esc(c.names[o.i])}</span><span>${fmt(o.v)}</span></div>`).join('');
     tip.style.display = 'block';
     const px = x(j) + 8, tw = tip.offsetWidth;
     tip.style.left = (px + tw + 8 > W ? x(j) - tw - 4 : px + 8) + 'px'; tip.style.top = '44px';
