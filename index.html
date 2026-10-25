@@ -161,7 +161,7 @@ const SDEF = {sau: 10, solo: 50, ramsch: 10, durch: 50, extra: 10, lfSau: 3, lfS
 const sset = () => ({...SDEF, ...G('schafkopf').settings});
 const SKT = {sau: 'Sauspiel', solo: 'Solo', wenz: 'Wenz', ramsch: 'Ramsch'};
 const eur = (c, sign) => (sign && c > 0 ? '+' : '') + (c / 100).toFixed(2).replace('.', ',') + ' €';
-const WDEF = {base: 20, per: 10, miss: 10, noEven: false, special: true, sonder: 9};
+const WDEF = {base: 20, per: 10, miss: 10, noEven: true, special: true, sonder: 9};
 const wset = () => ({...WDEF, ...G('wizard').settings});
 // 60 Charakterkarten + bis zu 9 Sonderkarten der Jubiläumsedition
 const wRounds = (s, n) => Math.floor((60 + Math.min(9, s.sonder || 0)) / n);
@@ -282,7 +282,7 @@ const VIEWS = {
       </div>`).join('')}
       ${bid ? `<p class="muted">Angesagt: ${sum} von ${r} ${sum > r ? '· überreizt' : sum < r ? '· unterreizt' : ''}</p>
       <button class="btn ok" data-act="wTricks">✅ Stiche eintragen</button>` : '<button class="btn acc" data-act="wBids">🔮 Ansagen eintragen</button>'}
-      ${bid || g.log.length ? `<button class="btn" data-act="wUndo">↩️ ${bid ? 'Ansagen löschen' : 'Letzte Runde rückgängig'}</button>` : ''}
+      ${bid ? '<button class="btn" data-act="wBids">✏️ Ansagen ändern</button>' : g.log.length ? '<button class="btn" data-act="wUndo">↩️ Letzte Runde rückgängig</button>' : ''}
       ${g.log.length ? `<label class="l">Verlauf</label><div class="chart" id="chart">${wLead(g)}<div class="legend">${g.players.map((p, i) => `<span><span class="sw" style="background:${SERIES[i]}"></span>${esc(p.name)}</span>`).join('')}</div><div id="chartSvg"></div><div class="tip" id="tip"></div></div>
       <details class="card" style="margin-top:12px"><summary style="font-weight:600">Spielblock anzeigen</summary>
       <table class="tab"><tr><th>Rd.</th>${g.players.map(p => `<th>${esc(p.name)}</th>`).join('')}</tr>
@@ -297,7 +297,7 @@ const VIEWS = {
     const num = (k, l) => `<div class="set"><span>${l}</span><input type="number" inputmode="numeric" data-set="${k}" data-game="wizard" value="${s[k]}"></div>`;
     return `<p class="muted" style="margin-top:0">Änderungen gelten für neue Spiele.</p>
       <div class="card">${num('base', 'Richtig angesagt')}${num('per', 'Plus je Stich')}${num('miss', 'Minus je Stich daneben')}</div>
-      <div class="card"><div class="set"><span>Ansagen dürfen nicht aufgehen<br><small style="color:var(--dim)">Summe der Ansagen ≠ Anzahl Karten</small></span><button class="tog ${s.noEven ? 'on' : ''}" data-act="tog" data-k="noEven" data-game="wizard"></button></div>
+      <div class="card"><div class="set"><span>Ansagen dürfen nicht aufgehen<br><small style="color:var(--dim)">Summe der Ansagen ≠ Anzahl Karten – der Letzte darf nicht „passend“ ansagen</small></span><button class="tog ${s.noEven ? 'on' : ''}" data-act="tog" data-k="noEven" data-game="wizard"></button></div>
       <div class="set"><span>Sonderkarten im Stapel (0–9)<br><small style="color:var(--dim)">Mehr Karten = mehr Runden: (60 + Sonderkarten) ÷ Spieler</small></span><input type="number" inputmode="numeric" data-set="sonder" data-game="wizard" value="${s.sonder}" style="width:74px"></div>
       <div class="set"><span>Jubiläums-Sonderkarten<br><small style="color:var(--dim)">💣 Bombe: Stich geht an niemand · ☁️ Wolke: Gewinner ändert Ansage um ±1</small></span><button class="tog ${s.special ? 'on' : ''}" data-act="tog" data-k="special" data-game="wizard"></button></div></div>
       <button class="btn" data-act="defaults" data-game="wizard">Standardregeln wiederherstellen</button>`;
@@ -669,7 +669,7 @@ const ACT = {
   abortC() { if (confirm('Spiel wirklich abbrechen? Es wird nicht in die Statistik aufgenommen.')) { G('cabo').current = null; save(); go('cmenu'); } },
   winMenuC() { $('#win').classList.remove('on'); go('cmenu'); },
   winNewC() { $('#win').classList.remove('on'); ACT.newGame({game: 'cabo'}); },
-  wBids() { wz = {k: 'bids', v: G('wizard').current.players.map(() => 0)}; wModal(); },
+  wBids() { const g = G('wizard').current; wz = {k: 'bids', v: g.bids ? [...g.bids] : g.players.map(() => 0)}; wModal(); },
   wTricks() { const b = G('wizard').current.bids; wz = {k: 'tricks', v: [...b], adj: b.map(() => 0), bomb: 0}; wModal(); },
   wStep(d) { const r = G('wizard').current.log.length + 1, i = +d.p; wz.v[i] = Math.max(0, Math.min(r, wz.v[i] + +d.v)); wModal(); },
   wBomb(d) { const r = G('wizard').current.log.length + 1; wz.bomb = Math.max(0, Math.min(r, wz.bomb + +d.v)); wModal(); },
@@ -723,12 +723,14 @@ function wModal() {
   const order = Array.from({length: n}, (_, j) => (dl + 1 + j) % n), sum = wz.v.reduce((a, b) => a + b, 0);
   const sp = !bids && g.settings.special, total = bids ? r : r - wz.bomb;
   const bad = bids ? g.settings.noEven && sum === r : sum !== total;
-  const msg = !bad ? '' : bids ? `⚠️ Die Ansagen dürfen nicht aufgehen – ${esc(g.players[order[n - 1]].name)} muss anders ansagen.` : `⚠️ Es müssen genau ${total} Stiche sein${wz.bomb ? ` (${r} − ${wz.bomb} 💣)` : ''}.`;
+  // letzte Ansage darf die Summe nicht auf genau r bringen
+  const last = order[n - 1], ban = bids && g.settings.noEven ? r - (sum - wz.v[last]) : -1;
+  const msg = !bad ? '' : bids ? `⚠️ Die Ansagen dürfen nicht aufgehen – ${esc(g.players[last].name)} darf nicht ${ban} ansagen.` : `⚠️ Es müssen genau ${total} Stiche sein${wz.bomb ? ` (${r} − ${wz.bomb} 💣)` : ''}.`;
   const eff = i => g.bids[i] + wz.adj[i];
   $('#modalBox').innerHTML = `<h3>Runde ${r}: ${bids ? 'Ansagen' : 'Stiche'}</h3><p>${bids ? 'Wie viele Stiche sagt jeder an? Reihenfolge ab links vom Geber.' : 'Wie viele Stiche hat jeder bekommen?'}</p>
     ${sp ? `<div class="crow"><span class="nm">💣 Bomben-Stiche<span class="hint">Stich geht an niemand</span></span>
       <button data-act="wBomb" data-v="-1">−</button><span style="width:44px;text-align:center;font-size:22px;font-weight:800">${wz.bomb}</span><button data-act="wBomb" data-v="1">+</button></div>` : ''}
-    ${order.map(i => `<div class="crow"><span class="nm">${esc(g.players[i].name)}${bids ? '' : `<span class="hint ${eff(i) === wz.v[i] ? 'plus' : ''}">Ansage ${wz.adj[i] ? `${g.bids[i]} ☁️→ ${eff(i)}` : g.bids[i]}${eff(i) === wz.v[i] ? ' ✓' : ''}</span>`}</span>
+    ${order.map(i => `<div class="crow"><span class="nm">${esc(g.players[i].name)}${bids ? (i === last && ban >= 0 ? `<span class="hint ${wz.v[i] === ban ? 'minus' : ''}">🚫 nicht ${ban}</span>` : '') : `<span class="hint ${eff(i) === wz.v[i] ? 'plus' : ''}">Ansage ${wz.adj[i] ? `${g.bids[i]} ☁️→ ${eff(i)}` : g.bids[i]}${eff(i) === wz.v[i] ? ' ✓' : ''}</span>`}</span>
       ${sp ? `<button class="${wz.adj[i] ? 'on' : ''}" data-act="wCloud" data-p="${i}" style="font-size:${wz.adj[i] ? 13 : 18}px">☁️${wz.adj[i] > 0 ? '+1' : wz.adj[i] < 0 ? '−1' : ''}</button>` : ''}
       <button data-act="wStep" data-p="${i}" data-v="-1">−</button><span style="width:44px;text-align:center;font-size:22px;font-weight:800">${wz.v[i]}</span><button data-act="wStep" data-p="${i}" data-v="1">+</button></div>`).join('')}
     <p style="margin:4px 0 12px;font-size:15px;text-align:center">Summe: <b>${sum}</b> von ${total}${msg ? `<br><span class="minus">${msg}</span>` : ''}</p>
