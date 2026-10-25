@@ -161,8 +161,9 @@ const SDEF = {sau: 10, solo: 50, ramsch: 10, durch: 50, extra: 10, lfSau: 3, lfS
 const sset = () => ({...SDEF, ...G('schafkopf').settings});
 const SKT = {sau: 'Sauspiel', solo: 'Solo', wenz: 'Wenz', ramsch: 'Ramsch'};
 const eur = (c, sign) => (sign && c > 0 ? '+' : '') + (c / 100).toFixed(2).replace('.', ',') + ' €';
-const WDEF = {base: 20, per: 10, miss: 10, noEven: false};
+const WDEF = {base: 20, per: 10, miss: 10, noEven: false, special: true};
 const wset = () => ({...WDEF, ...G('wizard').settings});
+const wEff = (l, i) => l.bids[i] + (l.adj ? l.adj[i] : 0);
 const DEFS = {kniffel: KDEF, tutto: TDEF, cabo: CDEF, schafkopf: SDEF, wizard: WDEF};
 const TCARDS = {
   b200: {sym: '⭐', big: '200', name: 'Bonus', co: '+200', c: 'linear-gradient(145deg,#ffb938,#e07b12)'},
@@ -277,8 +278,8 @@ const VIEWS = {
       ${bid || g.log.length ? `<button class="btn" data-act="wUndo">↩️ ${bid ? 'Ansagen löschen' : 'Letzte Runde rückgängig'}</button>` : ''}
       ${g.log.length ? `<details class="card" style="margin-top:12px"><summary style="font-weight:600">Spielblock anzeigen</summary>
       <table class="tab"><tr><th>Rd.</th>${g.players.map(p => `<th>${esc(p.name)}</th>`).join('')}</tr>
-      ${g.log.map((l, j) => `<tr><td>${j + 1}</td>${l.cum.map((c, i) => `<td>${c}<span class="hint ${l.bids[i] === l.tricks[i] ? 'plus' : 'minus'}">${l.bids[i]}/${l.tricks[i]}</span></td>`).join('')}</tr>`).join('')}</table>
-      <p class="hint" style="margin-top:8px">Klein: Ansage/Stiche</p></details>` : ''}
+      ${g.log.map((l, j) => `<tr><td>${j + 1}${l.bomb ? '<span class="hint">💣' + (l.bomb > 1 ? l.bomb : '') + '</span>' : ''}</td>${l.cum.map((c, i) => `<td>${c}<span class="hint ${wEff(l, i) === l.tricks[i] ? 'plus' : 'minus'}">${l.adj && l.adj[i] ? '☁️' : ''}${wEff(l, i)}/${l.tricks[i]}</span></td>`).join('')}</tr>`).join('')}</table>
+      <p class="hint" style="margin-top:8px">Klein: Ansage/Stiche${g.settings.special ? ' · ☁️ Ansage durch Wolke geändert · 💣 Stich durch Bombe verfallen' : ''}</p></details>` : ''}
       <div style="height:8px"></div>
       <button class="btn bad" data-act="abortW">Spiel abbrechen (nicht werten)</button>`;
   },
@@ -288,7 +289,8 @@ const VIEWS = {
     const num = (k, l) => `<div class="set"><span>${l}</span><input type="number" inputmode="numeric" data-set="${k}" data-game="wizard" value="${s[k]}"></div>`;
     return `<p class="muted" style="margin-top:0">Änderungen gelten für neue Spiele.</p>
       <div class="card">${num('base', 'Richtig angesagt')}${num('per', 'Plus je Stich')}${num('miss', 'Minus je Stich daneben')}</div>
-      <div class="card"><div class="set"><span>Ansagen dürfen nicht aufgehen<br><small style="color:var(--dim)">Summe der Ansagen ≠ Anzahl Karten</small></span><button class="tog ${s.noEven ? 'on' : ''}" data-act="tog" data-k="noEven" data-game="wizard"></button></div></div>
+      <div class="card"><div class="set"><span>Ansagen dürfen nicht aufgehen<br><small style="color:var(--dim)">Summe der Ansagen ≠ Anzahl Karten</small></span><button class="tog ${s.noEven ? 'on' : ''}" data-act="tog" data-k="noEven" data-game="wizard"></button></div>
+      <div class="set"><span>Jubiläums-Sonderkarten<br><small style="color:var(--dim)">💣 Bombe: Stich geht an niemand · ☁️ Wolke: Gewinner ändert Ansage um ±1</small></span><button class="tog ${s.special ? 'on' : ''}" data-act="tog" data-k="special" data-game="wizard"></button></div></div>
       <button class="btn" data-act="defaults" data-game="wizard">Standardregeln wiederherstellen</button>`;
   },
   kmenu() {
@@ -659,14 +661,19 @@ const ACT = {
   winMenuC() { $('#win').classList.remove('on'); go('cmenu'); },
   winNewC() { $('#win').classList.remove('on'); ACT.newGame({game: 'cabo'}); },
   wBids() { wz = {k: 'bids', v: G('wizard').current.players.map(() => 0)}; wModal(); },
-  wTricks() { wz = {k: 'tricks', v: [...G('wizard').current.bids]}; wModal(); },
+  wTricks() { const b = G('wizard').current.bids; wz = {k: 'tricks', v: [...b], adj: b.map(() => 0), bomb: 0}; wModal(); },
   wStep(d) { const r = G('wizard').current.log.length + 1, i = +d.p; wz.v[i] = Math.max(0, Math.min(r, wz.v[i] + +d.v)); wModal(); },
+  wBomb(d) { const r = G('wizard').current.log.length + 1; wz.bomb = Math.max(0, Math.min(r, wz.bomb + +d.v)); wModal(); },
+  // Wolke: 0 → +1 → −1 → 0 (Ansage darf nicht unter 0 fallen)
+  wCloud(d) { const i = +d.p, b = G('wizard').current.bids[i]; wz.adj[i] = wz.adj[i] === 0 ? 1 : wz.adj[i] === 1 && b > 0 ? -1 : 0; wModal(); },
   wSave() {
     const g = G('wizard').current, s = g.settings;
     if (wz.k === 'bids') { g.bids = [...wz.v]; save(); closeModal(); return render(); }
-    const t = wz.v, pts = g.bids.map((b, i) => b === t[i] ? s.base + s.per * t[i] : -s.miss * Math.abs(b - t[i]));
-    g.players.forEach((p, i) => { p.total += pts[i]; if (g.bids[i] === t[i]) p.hit++; });
-    g.log.push({bids: g.bids, tricks: [...t], pts, cum: g.players.map(p => p.total)});
+    const t = wz.v, l = {bids: g.bids, adj: [...wz.adj], bomb: wz.bomb, tricks: [...t]};
+    l.pts = g.bids.map((_, i) => wEff(l, i) === t[i] ? s.base + s.per * t[i] : -s.miss * Math.abs(wEff(l, i) - t[i]));
+    g.players.forEach((p, i) => { p.total += l.pts[i]; if (wEff(l, i) === t[i]) p.hit++; });
+    l.cum = g.players.map(p => p.total);
+    g.log.push(l);
     g.bids = null; save(); closeModal();
     if (g.log.length >= g.rounds) finishWizard(); else render();
   },
@@ -676,7 +683,7 @@ const ACT = {
     else {
       if (!confirm('Letzte Runde wirklich löschen?')) return;
       const l = g.log.pop();
-      g.players.forEach((p, i) => { p.total -= l.pts[i]; if (l.bids[i] === l.tricks[i]) p.hit--; });
+      g.players.forEach((p, i) => { p.total -= l.pts[i]; if (wEff(l, i) === l.tricks[i]) p.hit--; });
       g.bids = l.bids;
     }
     save(); render();
@@ -705,12 +712,18 @@ let cr = {caller: -1, zero: {}}, sk = null, chartSrc = null, wz = null;
 function wModal() {
   const g = G('wizard').current, n = g.players.length, r = g.log.length + 1, dl = (r - 1) % n, bids = wz.k === 'bids';
   const order = Array.from({length: n}, (_, j) => (dl + 1 + j) % n), sum = wz.v.reduce((a, b) => a + b, 0);
-  const bad = bids ? g.settings.noEven && sum === r : sum !== r;
-  const msg = !bad ? '' : bids ? `⚠️ Die Ansagen dürfen nicht aufgehen – ${esc(g.players[order[n - 1]].name)} muss anders ansagen.` : `⚠️ Es müssen genau ${r} Stiche sein.`;
+  const sp = !bids && g.settings.special, total = bids ? r : r - wz.bomb;
+  const bad = bids ? g.settings.noEven && sum === r : sum !== total;
+  const msg = !bad ? '' : bids ? `⚠️ Die Ansagen dürfen nicht aufgehen – ${esc(g.players[order[n - 1]].name)} muss anders ansagen.` : `⚠️ Es müssen genau ${total} Stiche sein${wz.bomb ? ` (${r} − ${wz.bomb} 💣)` : ''}.`;
+  const eff = i => g.bids[i] + wz.adj[i];
   $('#modalBox').innerHTML = `<h3>Runde ${r}: ${bids ? 'Ansagen' : 'Stiche'}</h3><p>${bids ? 'Wie viele Stiche sagt jeder an? Reihenfolge ab links vom Geber.' : 'Wie viele Stiche hat jeder bekommen?'}</p>
-    ${order.map(i => `<div class="crow"><span class="nm">${esc(g.players[i].name)}${bids ? '' : `<span class="hint ${g.bids[i] === wz.v[i] ? 'plus' : ''}">Ansage ${g.bids[i]}${g.bids[i] === wz.v[i] ? ' ✓' : ''}</span>`}</span>
+    ${sp ? `<div class="crow"><span class="nm">💣 Bomben-Stiche<span class="hint">Stich geht an niemand</span></span>
+      <button data-act="wBomb" data-v="-1">−</button><span style="width:44px;text-align:center;font-size:22px;font-weight:800">${wz.bomb}</span><button data-act="wBomb" data-v="1">+</button></div>` : ''}
+    ${order.map(i => `<div class="crow"><span class="nm">${esc(g.players[i].name)}${bids ? '' : `<span class="hint ${eff(i) === wz.v[i] ? 'plus' : ''}">Ansage ${wz.adj[i] ? `${g.bids[i]} ☁️→ ${eff(i)}` : g.bids[i]}${eff(i) === wz.v[i] ? ' ✓' : ''}</span>`}</span>
+      ${sp ? `<button class="${wz.adj[i] ? 'on' : ''}" data-act="wCloud" data-p="${i}" style="font-size:${wz.adj[i] ? 13 : 18}px">☁️${wz.adj[i] > 0 ? '+1' : wz.adj[i] < 0 ? '−1' : ''}</button>` : ''}
       <button data-act="wStep" data-p="${i}" data-v="-1">−</button><span style="width:44px;text-align:center;font-size:22px;font-weight:800">${wz.v[i]}</span><button data-act="wStep" data-p="${i}" data-v="1">+</button></div>`).join('')}
-    <p style="margin:4px 0 12px;font-size:15px;text-align:center">Summe: <b>${sum}</b> von ${r}${msg ? `<br><span class="minus">${msg}</span>` : ''}</p>
+    <p style="margin:4px 0 12px;font-size:15px;text-align:center">Summe: <b>${sum}</b> von ${total}${msg ? `<br><span class="minus">${msg}</span>` : ''}</p>
+    ${sp ? '<p class="hint" style="text-align:center;margin:-6px 0 12px">☁️ antippen: Wer den Wolken-Stich gewinnt, ändert seine Ansage um +1 oder −1 (nicht, wenn auch die Bombe im Stich lag).</p>' : ''}
     <button class="btn ok" data-act="wSave" ${bad ? 'disabled' : ''}>${bids ? 'Ansagen speichern' : 'Runde werten'}</button>`;
   $('#modal').classList.add('on');
 }
