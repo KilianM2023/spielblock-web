@@ -270,6 +270,7 @@ const VIEWS = {
       <div class="set"><span>Status</span><span>${st}</span></div>
       <div class="set"><span>Gespeicherte Spiele</span><b>${GAMES.reduce((a, k) => a + G(k).history.length, 0)}</b></div>
       <div class="set" style="border:0"><span>Letztes Backup</span><b>${DB.bk ? monthName(DB.bk) : '–'}</b></div>
+      ${bkErr ? `<p class="hint minus">Backup: ${esc(bkErr)}</p>` : ''}
       ${sync.state === 'error' ? `<p class="hint minus">${esc(sync.err)}</p>` : ''}</div>
       <button class="btn acc" data-act="syncShare">📤 Code teilen</button>
       <button class="btn" data-act="bkList">🗂️ Backups</button>
@@ -1094,7 +1095,7 @@ function onSnap(snap) {
     G(k).history = [...(cloud[k] || []), ...rest].sort((a, b) => a.date - b.date);
   }
   sync.state = server ? 'online' : 'offline'; save(); syncShow();
-  if (server && !bkChecked) { bkChecked = true; backupIfDue(); }
+  if (server) backupIfDue();
 }
 function syncErr(e) {
   console.error(e);
@@ -1104,7 +1105,7 @@ function syncErr(e) {
 function syncShow() { if (/stats$/.test(view) || view === 'sync') render(); }
 async function syncStart() {
   if (!FB_CONFIG || !DB.group) return;
-  sync.state = 'connecting'; bkChecked = false; syncShow();
+  sync.state = 'connecting'; syncShow();
   try {
     await fbInit();
     if (unsub) unsub();
@@ -1119,23 +1120,32 @@ function syncStop() { if (unsub) unsub(); unsub = null; sync.state = 'off'; }
 const MONTHS = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
 const monthName = m => MONTHS[+m.slice(5, 7) - 1] + ' ' + m.slice(0, 4);
 const bcol = c => fs.collection(fs.db, 'groups', DB.group, c);
-let bkChecked = false;
+let bkBusy = false, bkErr = '';
+// läuft bei jedem Server-Stand und beim Zurückholen der App; prüft Firebase nur, solange für diesen Monat noch kein Backup bekannt ist
 async function backupIfDue() {
-  const month = new Date().toISOString().slice(0, 7), meta = fs.doc(bcol('backups'), month);
+  const month = new Date().toISOString().slice(0, 7);
+  if (!fs || !DB.group || DB.bk === month || bkBusy) return;
+  bkBusy = true;
+  const meta = fs.doc(bcol('backups'), month);
   try {
     if (!(await fs.getDoc(meta)).exists()) {
       const games = {}; let n = 0;
       for (const k of GAMES) { games[k] = G(k).history.map(e => ({...e, _c: undefined})); n += games[k].length; }
-      if (!n) return;
+      if (!n) { bkErr = 'noch keine Spiele in der Gruppe'; return; }
       const json = JSON.stringify(games), key = Math.random().toString(36).slice(2, 10), CH = 400000, parts = Math.ceil(json.length / CH);
       for (let i = 0; i < parts; i++) await fs.setDoc(fs.doc(bcol('backupData'), `${month}_${key}_${i}`), {data: json.slice(i * CH, (i + 1) * CH)});
       await fs.setDoc(meta, {date: Date.now(), games: n, parts, key});
     }
-    DB.bk = month; save(); syncShow();
-  } catch (e) { console.warn('Backup', e); } // z. B. anderes Handy war schneller – dann gibt es das Backup schon
+    DB.bk = month; bkErr = ''; save();
+  } catch (e) {
+    // anderes Handy war schneller → beim nächsten Versuch existiert das Backup
+    console.warn('Backup', e); bkErr = e.code || e.message;
+  } finally { bkBusy = false; syncShow(); }
 }
 addEventListener('resize', () => { if (view === 'schart' || view === 'wgame') render(); });
 addEventListener('online', () => { if (DB.group && sync.state !== 'online') syncStart(); });
+// iPhone holt Home-Bildschirm-Apps oft nur aus dem Hintergrund zurück, statt sie neu zu starten
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && sync.state === 'online') backupIfDue(); });
 
 /* ---------- Start ---------- */
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
