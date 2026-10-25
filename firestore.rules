@@ -1,0 +1,17 @@
+rules_version = '2';
+// Firestore-Regeln für die gemeinsame Statistik.
+// In der Firebase-Konsole unter Firestore Database → Regeln einfügen und veröffentlichen.
+// Nur wer den Gruppen-Code kennt, kann die Spiele dieser Gruppe lesen oder schreiben.
+// Gruppen auflisten ist nicht möglich, weil es für /groups selbst keine Regel gibt.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /groups/{group}/games/{game} {
+      allow read, delete: if request.auth != null && group.size() >= 8;
+      allow create, update: if request.auth != null && group.size() >= 8
+        && request.resource.data.keys().hasOnly(['game', 'date', 'data'])
+        && request.resource.data.game in ['kniffel', 'tutto', 'cabo', 'schafkopf', 'wizard']
+        && request.resource.data.data is string
+        && request.resource.data.data.size() < 200000;
+    }
+  }
+}

@@ -234,8 +234,8 @@ function statsView(key, extra, o = {}) {
 }
 
 /* ---------- Navigation ---------- */
-const BACK = {kmenu: 'home', ksetup: 'kmenu', kgame: 'kmenu', kstats: 'kmenu', ksettings: 'kmenu', tmenu: 'home', tsetup: 'tmenu', tgame: 'tmenu', tstats: 'tmenu', tsettings: 'tmenu', cmenu: 'home', csetup: 'cmenu', cgame: 'cmenu', cstats: 'cmenu', csettings: 'cmenu', smenu: 'home', ssetup: 'smenu', sgame: 'smenu', sstats: 'smenu', ssettings: 'smenu', schart: 'sgame', spay: 'smenu', sevening: 'sstats', wmenu: 'home', wsetup: 'wmenu', wgame: 'wmenu', wstats: 'wmenu', wsettings: 'wmenu'};
-const TITLE = {home: 'Spielblock', kmenu: 'Kniffel', ksetup: 'Neues Spiel', kgame: 'Kniffel', kstats: 'Statistik', ksettings: 'Einstellungen', tmenu: 'Tutto', tsetup: 'Neues Spiel', tgame: 'Tutto', tstats: 'Statistik', tsettings: 'Einstellungen', cmenu: 'Cabo', csetup: 'Neues Spiel', cgame: 'Cabo', cstats: 'Statistik', csettings: 'Einstellungen', smenu: 'Schafkopf', ssetup: 'Neuer Abend', sgame: 'Schafkopf', sstats: 'Statistik', ssettings: 'Einstellungen', schart: 'Verlauf', spay: 'Abrechnung', sevening: 'Spieleabend', wmenu: 'Wizard', wsetup: 'Neues Spiel', wgame: 'Wizard', wstats: 'Statistik', wsettings: 'Einstellungen'};
+const BACK = {kmenu: 'home', ksetup: 'kmenu', kgame: 'kmenu', kstats: 'kmenu', ksettings: 'kmenu', tmenu: 'home', tsetup: 'tmenu', tgame: 'tmenu', tstats: 'tmenu', tsettings: 'tmenu', cmenu: 'home', csetup: 'cmenu', cgame: 'cmenu', cstats: 'cmenu', csettings: 'cmenu', smenu: 'home', ssetup: 'smenu', sgame: 'smenu', sstats: 'smenu', ssettings: 'smenu', schart: 'sgame', spay: 'smenu', sevening: 'sstats', wmenu: 'home', wsetup: 'wmenu', wgame: 'wmenu', wstats: 'wmenu', wsettings: 'wmenu', sync: 'home'};
+const TITLE = {home: 'Spielblock', kmenu: 'Kniffel', ksetup: 'Neues Spiel', kgame: 'Kniffel', kstats: 'Statistik', ksettings: 'Einstellungen', tmenu: 'Tutto', tsetup: 'Neues Spiel', tgame: 'Tutto', tstats: 'Statistik', tsettings: 'Einstellungen', cmenu: 'Cabo', csetup: 'Neues Spiel', cgame: 'Cabo', cstats: 'Statistik', csettings: 'Einstellungen', smenu: 'Schafkopf', ssetup: 'Neuer Abend', sgame: 'Schafkopf', sstats: 'Statistik', ssettings: 'Einstellungen', schart: 'Verlauf', spay: 'Abrechnung', sevening: 'Spieleabend', wmenu: 'Wizard', wsetup: 'Neues Spiel', wgame: 'Wizard', wstats: 'Statistik', wsettings: 'Einstellungen', sync: 'Gemeinsame Statistik'};
 let view = 'home', setup = {game: 'kniffel', n: 2, names: ['', '']};
 function go(v) { view = v; render(); $('#app').scrollTop = 0; }
 $('#back').onclick = () => { const b = (view === 'schart' ? chartSrc?.chartBack : view === 'spay' ? chartSrc?.payBack : null) || BACK[view]; if (b) go(b); };
@@ -259,7 +259,23 @@ const VIEWS = {
       <button class="big" data-act="go" data-v="tmenu"><span class="ic">🎯</span><span>Tutto<small>Würfeln bis 6.000 Punkte</small></span></button>
       <button class="big" data-act="go" data-v="cmenu"><span class="ic">🃏</span><span>Cabo<small>Unter 100 Punkten bleiben</small></span></button>
       <button class="big" data-act="go" data-v="smenu"><span class="ic">🐑</span><span>Schafkopf<small>Spieleabend abrechnen</small></span></button>
-      <button class="big" data-act="go" data-v="wmenu"><span class="ic">🧙</span><span>Wizard<small>Stiche richtig ansagen</small></span></button>`;
+      <button class="big" data-act="go" data-v="wmenu"><span class="ic">🧙</span><span>Wizard<small>Stiche richtig ansagen</small></span></button>
+      ${FB_CONFIG ? `<button class="big" data-act="go" data-v="sync"><span class="ic">☁️</span><span>Gemeinsame Statistik<small>${DB.group ? 'Gruppe: ' + esc(DB.group) : 'Mit Freunden teilen'}</small></span></button>` : ''}`;
+  },
+  sync() {
+    if (!DB.group) return `<p class="muted" style="margin-top:0">Mit einem gemeinsamen Gruppen-Code teilt ihr alle beendeten Spiele und habt auf jedem Handy dieselbe Statistik.</p>
+      <label class="l">Gruppen-Code</label><input class="inp" id="gcode" placeholder="z. B. kilian-crew-7x4q" autocapitalize="off" autocomplete="off" spellcheck="false">
+      <button class="btn acc" data-act="syncJoin" style="margin-top:12px">Gruppe beitreten</button>
+      <button class="btn" data-act="syncNew">🎲 Neuen Code erzeugen</button>
+      <p class="hint" style="margin-top:12px">Mindestens 8 Zeichen (a–z, 0–9, -). Gebt den Code nur Mitspielern – wer ihn kennt, sieht und ändert eure Statistik. Deine bisherigen Spiele werden beim Beitreten hochgeladen.</p>`;
+    const st = {off: '', connecting: '⏳ Verbinde …', online: '🟢 Verbunden', offline: '🟠 Offline – wird nachgeholt', error: '🔴 Fehler'}[sync.state];
+    return `<div class="card"><div class="set"><span>Gruppe</span><b>${esc(DB.group)}</b></div>
+      <div class="set"><span>Status</span><span>${st}</span></div>
+      <div class="set" style="border:0"><span>Gespeicherte Spiele</span><b>${GAMES.reduce((a, k) => a + G(k).history.length, 0)}</b></div>
+      ${sync.state === 'error' ? `<p class="hint minus">${esc(sync.err)}</p>` : ''}</div>
+      <button class="btn acc" data-act="syncShare">📤 Code teilen</button>
+      <button class="btn bad" data-act="syncLeave">Gruppe verlassen</button>
+      <p class="hint" style="margin-top:12px">Beendete Spiele werden automatisch geteilt. Ohne Internet wird es nachgeholt, sobald wieder Verbindung besteht. Laufende Spiele und Einstellungen bleiben auf diesem Handy.</p>`;
   },
   wmenu() {
     const cur = G('wizard').current;
@@ -591,7 +607,27 @@ const ACT = {
   abortT() { if (confirm('Spiel wirklich abbrechen? Es wird nicht in die Statistik aufgenommen.')) { G('tutto').current = null; save(); go('tmenu'); } },
   closeModal,
   abort() { if (confirm('Spiel wirklich abbrechen? Es wird nicht in die Statistik aufgenommen.')) { G('kniffel').current = null; save(); go('kmenu'); } },
-  resetStats(d) { const key = d.game || 'kniffel'; if (confirm('Alle Statistiken unwiderruflich löschen?')) { G(key).history = []; save(); render(); } },
+  resetStats(d) {
+    const key = d.game || 'kniffel', shared = fs && unsub && DB.group;
+    if (!confirm(shared ? `Statistik für ALLE in der Gruppe „${DB.group}“ unwiderruflich löschen?` : 'Alle Statistiken unwiderruflich löschen?')) return;
+    if (shared) G(key).history.filter(e => e._c === DB.group).forEach(e => fs.deleteDoc(gdoc(key, e)).catch(syncErr));
+    G(key).history = []; save(); render();
+  },
+  syncNew() { $('#gcode').value = 'gruppe-' + Array.from(crypto.getRandomValues(new Uint8Array(6)), b => 'abcdefghjkmnpqrstuvwxyz23456789'[b % 31]).join(''); },
+  syncJoin() {
+    const c = $('#gcode').value.trim().toLowerCase();
+    if (!/^[a-z0-9-]{8,40}$/.test(c)) return alert('Der Code braucht 8–40 Zeichen: Buchstaben a–z, Zahlen und Bindestrich.');
+    DB.group = c; save(); syncStart(); render();
+  },
+  syncShare() {
+    const text = `Spielblock – gemeinsame Statistik\nGruppen-Code: ${DB.group}\nApp: ${location.origin + location.pathname}\n→ Gemeinsame Statistik öffnen und Code eingeben.`;
+    if (navigator.share) navigator.share({text}).catch(() => {});
+    else navigator.clipboard.writeText(text).then(() => alert('Code kopiert.'), () => alert(DB.group));
+  },
+  syncLeave() {
+    if (!confirm('Gruppe verlassen? Die Statistik bleibt auf diesem Handy, wird aber nicht mehr abgeglichen.')) return;
+    syncStop(); DB.group = null; save(); render();
+  },
   tog(d) { if (d.k === 'sound') DB.sound = !DB.sound; else { const key = d.game || 'kniffel'; G(key).settings[d.k] = !{...DEFS[key], ...G(key).settings}[d.k]; } save(); render(); },
   defaults(d) { const key = d.game || 'kniffel'; if (confirm('Alle Regelwerte auf Standard setzen?')) { G(key).settings = {}; save(); render(); } },
   winMenu() { $('#win').classList.remove('on'); go('kmenu'); },
@@ -872,7 +908,7 @@ function finish() {
   const res = g.players.map(p => ({name: p.name, ...calc(p, set), kn: p.s.kn > 0 ? 1 + (p.kb || 0) : (p.kb || 0)}));
   const max = Math.max(...res.map(r => r.total));
   const winners = res.filter(r => r.total === max).map(r => r.name);
-  st.history.push({id: g.id, date: Date.now(), winners: winners.map(w => w.toLowerCase()), players: res.map(r => ({name: r.name, total: r.total, kn: r.kn}))});
+  addGame('kniffel', {id: g.id, date: Date.now(), winners: winners.map(w => w.toLowerCase()), players: res.map(r => ({name: r.name, total: r.total, kn: r.kn}))});
   st.current = null; save();
   const medal = ['🥇', '🥈', '🥉'];
   const sorted = res.slice().sort((a, b) => b.total - a.total);
@@ -890,7 +926,7 @@ function finishTutto(forceIdx) {
     const max = Math.max(...g.players.map(p => p.total));
     return g.players.filter(p => p.total === max).map(p => p.name);
   })();
-  st.history.push({id: g.id, date: Date.now(), winners: winners.map(w => w.toLowerCase()), players: g.players.map(p => ({name: p.name, total: p.total}))});
+  addGame('tutto', {id: g.id, date: Date.now(), winners: winners.map(w => w.toLowerCase()), players: g.players.map(p => ({name: p.name, total: p.total}))});
   st.current = null; save();
   const medal = ['🥇', '🥈', '🥉'];
   const sorted = g.players.slice().sort((a, b) => b.total - a.total);
@@ -907,7 +943,7 @@ function finishCabo() {
   const st = G('cabo'), g = st.current, min = Math.min(...g.players.map(p => p.total));
   const winners = g.players.filter(p => p.total === min).map(p => p.name);
   const losers = g.players.filter(p => p.total > g.settings.limit).map(p => p.name);
-  st.history.push({id: g.id, date: Date.now(), winners: winners.map(w => w.toLowerCase()), players: g.players.map(p => ({name: p.name, total: p.total}))});
+  addGame('cabo', {id: g.id, date: Date.now(), winners: winners.map(w => w.toLowerCase()), players: g.players.map(p => ({name: p.name, total: p.total}))});
   st.current = null; save();
   const medal = ['🥇', '🥈', '🥉'];
   const sorted = g.players.slice().sort((a, b) => a.total - b.total);
@@ -923,7 +959,7 @@ function finishCabo() {
 function finishWizard() {
   const st = G('wizard'), g = st.current, max = Math.max(...g.players.map(p => p.total));
   const winners = g.players.filter(p => p.total === max).map(p => p.name);
-  st.history.push({id: g.id, date: Date.now(), winners: winners.map(w => w.toLowerCase()), players: g.players.map(p => ({name: p.name, total: p.total, hit: p.hit}))});
+  addGame('wizard', {id: g.id, date: Date.now(), winners: winners.map(w => w.toLowerCase()), players: g.players.map(p => ({name: p.name, total: p.total, hit: p.hit}))});
   st.current = null; save();
   const medal = ['🥇', '🥈', '🥉'];
   const sorted = g.players.slice().sort((a, b) => b.total - a.total);
@@ -938,7 +974,7 @@ function finishWizard() {
 function finishSchafkopf() {
   const st = G('schafkopf'), g = st.current, max = Math.max(...g.players.map(p => p.total));
   const winners = g.players.filter(p => p.total === max).map(p => p.name);
-  st.history.push({id: g.id, date: Date.now(), winners: winners.map(w => w.toLowerCase()), players: g.players.map(p => ({name: p.name, total: p.total, solo: p.solo})), log: g.log.map(r => r.d), games: g.log});
+  addGame('schafkopf', {id: g.id, date: Date.now(), winners: winners.map(w => w.toLowerCase()), players: g.players.map(p => ({name: p.name, total: p.total, solo: p.solo})), log: g.log.map(r => r.d), games: g.log});
   st.current = null; save();
   const medal = ['🥇', '🥈', '🥉'];
   const sorted = g.players.slice().sort((a, b) => b.total - a.total);
@@ -988,9 +1024,76 @@ function confetti() {
   })(performance.now());
 }
 
+/* ---------- Gemeinsame Statistik (Firebase) ---------- */
+// Konfiguration aus der Firebase-Konsole (Projekteinstellungen → Meine Apps → Web-App). null = Sync aus.
+const FB_CONFIG = {
+  apiKey: 'AIzaSyCXuiZ12pG0Xdv93GFwDUAupEpDvKJ2QH8',
+  authDomain: 'spielblock-9d09b.firebaseapp.com',
+  projectId: 'spielblock-9d09b',
+  storageBucket: 'spielblock-9d09b.firebasestorage.app',
+  messagingSenderId: '146708687725',
+  appId: '1:146708687725:web:0638b99f0c535261e84864',
+};
+const FB_URL = 'https://www.gstatic.com/firebasejs/10.12.2/';
+const GAMES = ['kniffel', 'tutto', 'cabo', 'schafkopf', 'wizard'];
+let fs = null, unsub = null, sync = {state: 'off', err: ''};
+
+// Beendetes Spiel lokal speichern und – falls in einer Gruppe – hochladen
+function addGame(key, e) { G(key).history.push(e); syncPut(key, e); }
+
+async function fbInit() {
+  if (fs) return fs;
+  const [app, auth, store] = await Promise.all(['firebase-app.js', 'firebase-auth.js', 'firebase-firestore.js'].map(f => import(FB_URL + f)));
+  const a = app.initializeApp(FB_CONFIG), au = auth.getAuth(a);
+  await new Promise(r => { const off = auth.onAuthStateChanged(au, () => { off(); r(); }); });
+  if (!au.currentUser) await auth.signInAnonymously(au);
+  fs = {...store, db: store.initializeFirestore(a, {localCache: store.persistentLocalCache()})};
+  return fs;
+}
+const gcol = () => fs.collection(fs.db, 'groups', DB.group, 'games');
+const gdoc = (key, e) => fs.doc(gcol(), key + '_' + e.id);
+
+function syncPut(key, e) {
+  if (!fs || !DB.group || !unsub) return;
+  e._c = DB.group; // _c = in dieser Gruppe hochgeladen
+  fs.setDoc(gdoc(key, e), {game: key, date: e.date, data: JSON.stringify({...e, _c: undefined})}).catch(syncErr);
+}
+
+// Cloud ist maßgeblich: lokale Spiele ohne _c sind neu und werden hochgeladen,
+// lokale mit _c, die in der Cloud fehlen, hat jemand gelöscht (nur bei Server-Stand prüfen).
+function onSnap(snap) {
+  const cloud = {}, server = !snap.metadata.fromCache;
+  snap.forEach(d => { const x = d.data(); (cloud[x.game] = cloud[x.game] || []).push({...JSON.parse(x.data), _c: DB.group}); });
+  for (const k of GAMES) {
+    const ids = new Set((cloud[k] || []).map(e => e.id));
+    const rest = G(k).history.filter(e => !ids.has(e.id) && (e._c !== DB.group || !server));
+    rest.filter(e => e._c !== DB.group).forEach(e => syncPut(k, e));
+    G(k).history = [...(cloud[k] || []), ...rest].sort((a, b) => a.date - b.date);
+  }
+  sync.state = server ? 'online' : 'offline'; save(); syncShow();
+}
+function syncErr(e) {
+  console.error(e);
+  const off = !navigator.onLine || /unavailable|network|fetch|import/i.test(e.code + ' ' + e.message);
+  sync.state = off ? 'offline' : 'error'; sync.err = e.code || e.message; syncShow();
+}
+function syncShow() { if (/stats$/.test(view) || view === 'sync') render(); }
+async function syncStart() {
+  if (!FB_CONFIG || !DB.group) return;
+  sync.state = 'connecting'; syncShow();
+  try {
+    await fbInit();
+    if (unsub) unsub();
+    unsub = fs.onSnapshot(gcol(), {includeMetadataChanges: true}, onSnap, syncErr);
+  } catch (e) { syncErr(e); }
+}
+function syncStop() { if (unsub) unsub(); unsub = null; sync.state = 'off'; }
+addEventListener('online', () => { if (DB.group && sync.state !== 'online') syncStart(); });
+
 /* ---------- Start ---------- */
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 render();
+syncStart();
 </script>
 </body>
 </html>
