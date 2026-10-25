@@ -458,6 +458,7 @@ const VIEWS = {
       ${sum('GESAMT', r => r.total, 'total')}
     </div></div>
     <div style="height:16px"></div>
+    ${isDone(g) ? '<button class="btn ok" data-act="kEnd">🏁 Spiel beenden</button>' : ''}
     <button class="btn" data-act="abort">Spiel abbrechen (nicht werten)</button>`;
   },
   tgame() {
@@ -543,8 +544,9 @@ const ACT = {
     const g = G('kniffel').current, p = g.players[+d.p];
     if (d.v === 'x') delete p.s[d.c]; else p.s[d.c] = +d.v;
     save(); closeModal(); render();
-    if (isDone(g)) finish();
+    if (isDone(g)) ACT.kEnd();
   },
+  kEnd() { if (confirm('Alle Felder ausgefüllt – Spiel beenden?')) finish(); },
   addPts(d) { openTuttoEntry(+d.p); },
   submitPts(d) {
     const g = G('tutto').current, pi = +d.p, p = g.players[pi];
