@@ -14,11 +14,17 @@ service cloud.firestore {
         && request.resource.data.data.size() < 200000;
     }
     // Monatliche Backups: nur anlegen, nie ändern oder löschen (Löschen nur in der Konsole)
+    // nur das Backup des aktuellen Monats (UTC) darf angelegt werden
     match /groups/{group}/backups/{month} {
       allow read: if request.auth != null && group.size() >= 8;
       allow create: if request.auth != null && group.size() >= 8
+        && month.matches('[0-9]{4}-[0-9]{2}')
+        && int(month.split('-')[0]) == request.time.year()
+        && int(month.split('-')[1]) == request.time.month()
         && request.resource.data.keys().hasOnly(['date', 'games', 'parts', 'key'])
-        && request.resource.data.parts is int && request.resource.data.parts <= 20;
+        && request.resource.data.games is int
+        && request.resource.data.parts is int && request.resource.data.parts <= 20
+        && request.resource.data.key is string && request.resource.data.key.size() <= 20;
     }
     match /groups/{group}/backupData/{part} {
       allow read: if request.auth != null && group.size() >= 8;

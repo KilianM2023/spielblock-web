@@ -628,9 +628,9 @@ const ACT = {
     const box = $('#modalBox');
     box.innerHTML = '<h3>🗂️ Backups</h3><p class="muted">Lade …</p>'; $('#modal').classList.add('on');
     try {
-      const l = (await fs.getDocs(bcol('backups'))).docs.map(d => ({month: d.id, ...d.data()})).sort((a, b) => b.month.localeCompare(a.month));
-      box.innerHTML = `<h3>🗂️ Backups</h3>${l.length ? `<div class="card">${l.map(b => `<div class="hist" style="align-items:center"><span>${monthName(b.month)} · ${b.games} Spiele</span>
-        <button class="chip" data-act="bkRestore" data-m="${b.month}" data-key="${esc(b.key)}" data-parts="${b.parts}">Wiederherstellen</button></div>`).join('')}</div>` : '<p class="muted">Noch kein Backup.</p>'}`;
+      const l = (await fs.getDocs(bcol('backups'))).docs.filter(d => /^\d{4}-\d{2}$/.test(d.id)).map(d => ({month: d.id, ...d.data()})).sort((a, b) => b.month.localeCompare(a.month));
+      box.innerHTML = `<h3>🗂️ Backups</h3>${l.length ? `<div class="card">${l.map(b => `<div class="hist" style="align-items:center"><span>${monthName(b.month)} · ${+b.games || 0} ${+b.games === 1 ? 'Spiel' : 'Spiele'}</span>
+        <button class="chip" data-act="bkRestore" data-m="${b.month}" data-key="${esc(b.key)}" data-parts="${+b.parts || 0}">Wiederherstellen</button></div>`).join('')}</div>` : '<p class="muted">Noch kein Backup.</p>'}`;
     } catch (e) { box.innerHTML = `<h3>🗂️ Backups</h3><p class="minus">${esc(e.code || e.message)}</p>`; }
   },
   async bkRestore(d) {
@@ -641,11 +641,11 @@ const ACT = {
       let n = 0;
       for (const k of GAMES) {
         const ids = new Set(G(k).history.map(e => e.id));
-        for (const e of games[k] || []) if (!ids.has(e.id)) { addGame(k, e); n++; }
+        for (const e of (games[k] || []).map(x => parseGame(JSON.stringify(x))).filter(Boolean)) if (!ids.has(e.id)) { addGame(k, e); n++; }
         G(k).history.sort((a, b) => a.date - b.date);
       }
       save(); closeModal(); render();
-      alert(n ? `${n} Spiele wiederhergestellt.` : 'Alle Spiele aus dem Backup sind schon da.');
+      alert(n ? `${n} ${n === 1 ? 'Spiel' : 'Spiele'} wiederhergestellt.` : 'Alle Spiele aus dem Backup sind schon da.');
     } catch (e) { alert('Fehler: ' + (e.code || e.message)); }
   },
   tog(d) { if (d.k === 'sound') DB.sound = !DB.sound; else { const key = d.game || 'kniffel'; G(key).settings[d.k] = !{...DEFS[key], ...G(key).settings}[d.k]; } save(); render(); },
@@ -1075,11 +1075,18 @@ function syncPut(key, e) {
   fs.setDoc(gdoc(key, e), {game: key, date: e.date, data: JSON.stringify({...e, _c: undefined})}).catch(syncErr);
 }
 
+// Daten anderer Handys nie ungeprüft anzeigen: Text nur in Namen/Spielart, sonst Zahlen
+const cleanVal = (k, v) => typeof v === 'string' && k !== 'name' && k !== 'type' && isNaN(k) ? Number(v) : v;
+function parseGame(s) {
+  try { const e = JSON.parse(s, cleanVal); return e && Array.isArray(e.players) && Array.isArray(e.winners) && e.players.every(p => p && typeof p.name === 'string') ? e : null; }
+  catch (err) { return null; }
+}
+
 // Cloud ist maßgeblich: lokale Spiele ohne _c sind neu und werden hochgeladen,
 // lokale mit _c, die in der Cloud fehlen, hat jemand gelöscht (nur bei Server-Stand prüfen).
 function onSnap(snap) {
   const cloud = {}, server = !snap.metadata.fromCache;
-  snap.forEach(d => { const x = d.data(); (cloud[x.game] = cloud[x.game] || []).push({...JSON.parse(x.data), _c: DB.group}); });
+  snap.forEach(d => { const x = d.data(), e = parseGame(x.data); if (e && GAMES.includes(x.game)) (cloud[x.game] = cloud[x.game] || []).push({...e, _c: DB.group}); });
   for (const k of GAMES) {
     const ids = new Set((cloud[k] || []).map(e => e.id));
     const rest = G(k).history.filter(e => !ids.has(e.id) && (e._c !== DB.group || !server));
