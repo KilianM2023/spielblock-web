@@ -13,5 +13,19 @@ service cloud.firestore {
         && request.resource.data.data is string
         && request.resource.data.data.size() < 200000;
     }
+    // Monatliche Backups: nur anlegen, nie ändern oder löschen (Löschen nur in der Konsole)
+    match /groups/{group}/backups/{month} {
+      allow read: if request.auth != null && group.size() >= 8;
+      allow create: if request.auth != null && group.size() >= 8
+        && request.resource.data.keys().hasOnly(['date', 'games', 'parts', 'key'])
+        && request.resource.data.parts is int && request.resource.data.parts <= 20;
+    }
+    match /groups/{group}/backupData/{part} {
+      allow read: if request.auth != null && group.size() >= 8;
+      allow create: if request.auth != null && group.size() >= 8
+        && request.resource.data.keys().hasOnly(['data'])
+        && request.resource.data.data is string
+        && request.resource.data.data.size() <= 400000;
+    }
   }
 }

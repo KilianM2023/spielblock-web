@@ -254,35 +254,33 @@ function render() {
 
 const VIEWS = {
   home() {
-    return `<p class="muted" style="margin-top:0">Welches Spiel schreiben wir auf?</p>
-      <button class="big" data-act="go" data-v="kmenu"><span class="ic">🎲</span><span>Kniffel<small>Würfelblock mit 13 Feldern</small></span></button>
-      <button class="big" data-act="go" data-v="tmenu"><span class="ic">🎯</span><span>Tutto<small>Würfeln bis 6.000 Punkte</small></span></button>
-      <button class="big" data-act="go" data-v="cmenu"><span class="ic">🃏</span><span>Cabo<small>Unter 100 Punkten bleiben</small></span></button>
-      <button class="big" data-act="go" data-v="smenu"><span class="ic">🐑</span><span>Schafkopf<small>Spieleabend abrechnen</small></span></button>
-      <button class="big" data-act="go" data-v="wmenu"><span class="ic">🧙</span><span>Wizard<small>Stiche richtig ansagen</small></span></button>
-      ${FB_CONFIG ? `<button class="big" data-act="go" data-v="sync"><span class="ic">☁️</span><span>Gemeinsame Statistik<small>${DB.group ? 'Gruppe: ' + esc(DB.group) : 'Mit Freunden teilen'}</small></span></button>` : ''}`;
+    return `<button class="big" data-act="go" data-v="kmenu"><span class="ic">🎲</span><span>Kniffel</span></button>
+      <button class="big" data-act="go" data-v="tmenu"><span class="ic">🎯</span><span>Tutto</span></button>
+      <button class="big" data-act="go" data-v="cmenu"><span class="ic">🃏</span><span>Cabo</span></button>
+      <button class="big" data-act="go" data-v="smenu"><span class="ic">🐑</span><span>Schafkopf</span></button>
+      <button class="big" data-act="go" data-v="wmenu"><span class="ic">🧙</span><span>Wizard</span></button>
+      ${FB_CONFIG ? `<button class="big" data-act="go" data-v="sync"><span class="ic">☁️</span><span>Gemeinsame Statistik${DB.group ? `<small>${esc(DB.group)}</small>` : ''}</span></button>` : ''}`;
   },
   sync() {
-    if (!DB.group) return `<p class="muted" style="margin-top:0">Mit einem gemeinsamen Gruppen-Code teilt ihr alle beendeten Spiele und habt auf jedem Handy dieselbe Statistik.</p>
-      <label class="l">Gruppen-Code</label><input class="inp" id="gcode" placeholder="z. B. kilian-crew-7x4q" autocapitalize="off" autocomplete="off" spellcheck="false">
+    if (!DB.group) return `<label class="l" style="margin-top:0">Gruppen-Code</label><input class="inp" id="gcode" placeholder="z. B. kilian-crew-7x4q" autocapitalize="off" autocomplete="off" spellcheck="false">
       <button class="btn acc" data-act="syncJoin" style="margin-top:12px">Gruppe beitreten</button>
-      <button class="btn" data-act="syncNew">🎲 Neuen Code erzeugen</button>
-      <p class="hint" style="margin-top:12px">Mindestens 8 Zeichen (a–z, 0–9, -). Gebt den Code nur Mitspielern – wer ihn kennt, sieht und ändert eure Statistik. Deine bisherigen Spiele werden beim Beitreten hochgeladen.</p>`;
+      <button class="btn" data-act="syncNew">🎲 Neuen Code erzeugen</button>`;
     const st = {off: '', connecting: '⏳ Verbinde …', online: '🟢 Verbunden', offline: '🟠 Offline – wird nachgeholt', error: '🔴 Fehler'}[sync.state];
     return `<div class="card"><div class="set"><span>Gruppe</span><b>${esc(DB.group)}</b></div>
       <div class="set"><span>Status</span><span>${st}</span></div>
-      <div class="set" style="border:0"><span>Gespeicherte Spiele</span><b>${GAMES.reduce((a, k) => a + G(k).history.length, 0)}</b></div>
+      <div class="set"><span>Gespeicherte Spiele</span><b>${GAMES.reduce((a, k) => a + G(k).history.length, 0)}</b></div>
+      <div class="set" style="border:0"><span>Letztes Backup</span><b>${DB.bk ? monthName(DB.bk) : '–'}</b></div>
       ${sync.state === 'error' ? `<p class="hint minus">${esc(sync.err)}</p>` : ''}</div>
       <button class="btn acc" data-act="syncShare">📤 Code teilen</button>
-      <button class="btn bad" data-act="syncLeave">Gruppe verlassen</button>
-      <p class="hint" style="margin-top:12px">Beendete Spiele werden automatisch geteilt. Ohne Internet wird es nachgeholt, sobald wieder Verbindung besteht. Laufende Spiele und Einstellungen bleiben auf diesem Handy.</p>`;
+      <button class="btn" data-act="bkList">🗂️ Backups</button>
+      <button class="btn bad" data-act="syncLeave">Gruppe verlassen</button>`;
   },
   wmenu() {
     const cur = G('wizard').current;
     return `<button class="big" data-act="newGame" data-game="wizard"><span class="ic">✨</span><span>Neues Spiel</span></button>
       <button class="big" data-act="go" data-v="wgame" ${cur ? '' : 'disabled'}><span class="ic">▶️</span><span>Spiel fortsetzen<small>${cur ? esc(cur.players.map(p => p.name).join(', ')) + ' · Runde ' + (cur.log.length + 1) + '/' + cur.rounds : 'kein laufendes Spiel'}</small></span></button>
       <button class="big" data-act="go" data-v="wstats"><span class="ic">📊</span><span>Statistik</span></button>
-      <button class="big" data-act="go" data-v="wsettings"><span class="ic">⚙️</span><span>Spieleinstellungen<small>Punkte &amp; Ansage-Regel</small></span></button>`;
+      <button class="big" data-act="go" data-v="wsettings"><span class="ic">⚙️</span><span>Spieleinstellungen</span></button>`;
   },
   wgame() {
     const g = G('wizard').current; if (!g) return '<p class="muted">Kein laufendes Spiel.</p>';
@@ -298,12 +296,12 @@ const VIEWS = {
       </div>`).join('')}
       ${bid ? `<p class="muted">Angesagt: ${sum} von ${r} ${sum > r ? '· überreizt' : sum < r ? '· unterreizt' : ''}</p>
       <button class="btn ok" data-act="wTricks">✅ Stiche eintragen</button>` : '<button class="btn acc" data-act="wBids">🔮 Ansagen eintragen</button>'}
-      ${bid ? '<button class="btn" data-act="wBids">✏️ Ansagen ändern</button>' : g.log.length ? '<button class="btn" data-act="wUndo">↩️ Letzte Runde rückgängig</button>' : ''}
+      ${bid ? '<button class="btn" data-act="wBids">✏️ Ansagen ändern</button>' : ''}
+      ${g.log.length ? '<button class="btn" data-act="wUndo">↩️ Letzte Runde rückgängig</button>' : ''}
       ${g.log.length ? `<label class="l">Verlauf</label><div class="chart" id="chart">${wLead(g)}<div class="legend">${g.players.map((p, i) => `<span><span class="sw" style="background:${SERIES[i]}"></span>${esc(p.name)}</span>`).join('')}</div><div id="chartSvg"></div><div class="tip" id="tip"></div></div>
       <details class="card" style="margin-top:12px"><summary style="font-weight:600">Spielblock anzeigen</summary>
       <table class="tab"><tr><th>Rd.</th>${g.players.map(p => `<th>${esc(p.name)}</th>`).join('')}</tr>
-      ${g.log.map((l, j) => `<tr><td>${j + 1}${l.bomb ? '<span class="hint">💣' + (l.bomb > 1 ? l.bomb : '') + '</span>' : ''}</td>${l.cum.map((c, i) => `<td>${c}<span class="hint ${wEff(l, i) === l.tricks[i] ? 'plus' : 'minus'}">${l.adj && l.adj[i] ? '☁️' : ''}${wEff(l, i)}/${l.tricks[i]}</span></td>`).join('')}</tr>`).join('')}</table>
-      <p class="hint" style="margin-top:8px">Klein: Ansage/Stiche${g.settings.special ? ' · ☁️ Ansage durch Wolke geändert · 💣 Stich durch Bombe verfallen' : ''}</p></details>` : ''}
+      ${g.log.map((l, j) => `<tr><td>${j + 1}${l.bomb ? '<span class="hint">💣' + (l.bomb > 1 ? l.bomb : '') + '</span>' : ''}</td>${l.cum.map((c, i) => `<td>${c}<span class="hint ${wEff(l, i) === l.tricks[i] ? 'plus' : 'minus'}">${l.adj && l.adj[i] ? '☁️' : ''}${wEff(l, i)}/${l.tricks[i]}</span></td>`).join('')}</tr>`).join('')}</table></details>` : ''}
       <div style="height:8px"></div>
       <button class="btn bad" data-act="abortW">Spiel abbrechen (nicht werten)</button>`;
   },
@@ -311,11 +309,10 @@ const VIEWS = {
   wsettings() {
     const s = wset();
     const num = (k, l) => `<div class="set"><span>${l}</span><input type="number" inputmode="numeric" data-set="${k}" data-game="wizard" value="${s[k]}"></div>`;
-    return `<p class="muted" style="margin-top:0">Änderungen gelten für neue Spiele.</p>
-      <div class="card">${num('base', 'Richtig angesagt')}${num('per', 'Plus je Stich')}${num('miss', 'Minus je Stich daneben')}</div>
-      <div class="card"><div class="set"><span>Ansagen dürfen nicht aufgehen<br><small style="color:var(--dim)">Summe der Ansagen ≠ Anzahl Karten – der Letzte darf nicht „passend“ ansagen</small></span><button class="tog ${s.noEven ? 'on' : ''}" data-act="tog" data-k="noEven" data-game="wizard"></button></div>
-      <div class="set"><span>Sonderkarten im Stapel (0–9)<br><small style="color:var(--dim)">Mehr Karten = mehr Runden: (60 + Sonderkarten) ÷ Spieler</small></span><input type="number" inputmode="numeric" data-set="sonder" data-game="wizard" value="${s.sonder}" style="width:74px"></div>
-      <div class="set"><span>Jubiläums-Sonderkarten<br><small style="color:var(--dim)">💣 Bombe: Stich geht an niemand · ☁️ Wolke: Gewinner ändert Ansage um ±1</small></span><button class="tog ${s.special ? 'on' : ''}" data-act="tog" data-k="special" data-game="wizard"></button></div></div>
+    return `<div class="card">${num('base', 'Richtig angesagt')}${num('per', 'Plus je Stich')}${num('miss', 'Minus je Stich daneben')}</div>
+      <div class="card"><div class="set"><span>Ansagen dürfen nicht aufgehen</span><button class="tog ${s.noEven ? 'on' : ''}" data-act="tog" data-k="noEven" data-game="wizard"></button></div>
+      <div class="set"><span>Sonderkarten im Stapel (0–9)</span><input type="number" inputmode="numeric" data-set="sonder" data-game="wizard" value="${s.sonder}" style="width:74px"></div>
+      <div class="set"><span>💣 Bombe &amp; ☁️ Wolke</span><button class="tog ${s.special ? 'on' : ''}" data-act="tog" data-k="special" data-game="wizard"></button></div></div>
       <button class="btn" data-act="defaults" data-game="wizard">Standardregeln wiederherstellen</button>`;
   },
   kmenu() {
@@ -323,26 +320,26 @@ const VIEWS = {
     return `<button class="big" data-act="newGame" data-game="kniffel"><span class="ic">✨</span><span>Neues Spiel</span></button>
       <button class="big" data-act="go" data-v="kgame" ${cur ? '' : 'disabled'}><span class="ic">▶️</span><span>Spiel fortsetzen<small>${cur ? esc(cur.players.map(p => p.name).join(', ')) : 'kein laufendes Spiel'}</small></span></button>
       <button class="big" data-act="go" data-v="kstats"><span class="ic">📊</span><span>Statistik</span></button>
-      <button class="big" data-act="go" data-v="ksettings"><span class="ic">⚙️</span><span>Spieleinstellungen<small>Sonderregeln &amp; Werte</small></span></button>`;
+      <button class="big" data-act="go" data-v="ksettings"><span class="ic">⚙️</span><span>Spieleinstellungen</span></button>`;
   },
   tmenu() {
     const cur = G('tutto').current;
     return `<button class="big" data-act="newGame" data-game="tutto"><span class="ic">✨</span><span>Neues Spiel</span></button>
       <button class="big" data-act="go" data-v="tgame" ${cur ? '' : 'disabled'}><span class="ic">▶️</span><span>Spiel fortsetzen<small>${cur ? esc(cur.players.map(p => p.name).join(', ')) : 'kein laufendes Spiel'}</small></span></button>
       <button class="big" data-act="go" data-v="tstats"><span class="ic">📊</span><span>Statistik</span></button>
-      <button class="big" data-act="go" data-v="tsettings"><span class="ic">⚙️</span><span>Spieleinstellungen<small>Zielpunktzahl</small></span></button>`;
+      <button class="big" data-act="go" data-v="tsettings"><span class="ic">⚙️</span><span>Spieleinstellungen</span></button>`;
   },
   cmenu() {
     const cur = G('cabo').current;
     return `<button class="big" data-act="newGame" data-game="cabo"><span class="ic">✨</span><span>Neues Spiel</span></button>
       <button class="big" data-act="go" data-v="cgame" ${cur ? '' : 'disabled'}><span class="ic">▶️</span><span>Spiel fortsetzen<small>${cur ? esc(cur.players.map(p => p.name).join(', ')) : 'kein laufendes Spiel'}</small></span></button>
       <button class="big" data-act="go" data-v="cstats"><span class="ic">📊</span><span>Statistik</span></button>
-      <button class="big" data-act="go" data-v="csettings"><span class="ic">⚙️</span><span>Spieleinstellungen<small>Grenze, Strafpunkte &amp; Sonderregeln</small></span></button>`;
+      <button class="big" data-act="go" data-v="csettings"><span class="ic">⚙️</span><span>Spieleinstellungen</span></button>`;
   },
   cgame() {
     const g = G('cabo').current; if (!g) return '<p class="muted">Kein laufendes Spiel.</p>';
     const min = Math.min(...g.players.map(p => p.total)), lim = g.settings.limit;
-    return `<p class="muted" style="margin-top:0">Runde ${g.log.length + 1} · wer über ${lim} kommt, beendet das Spiel</p>
+    return `<p class="muted" style="margin-top:0">Runde ${g.log.length + 1} · Grenze ${lim}</p>
       ${g.players.map((p, i) => `<div class="card">
         <div style="display:flex;justify-content:space-between;align-items:center">
           <span class="name">${esc(p.name)}</span>
@@ -360,7 +357,7 @@ const VIEWS = {
     return `<button class="big" data-act="newGame" data-game="schafkopf"><span class="ic">✨</span><span>Neuer Spieleabend</span></button>
       <button class="big" data-act="go" data-v="sgame" ${cur ? '' : 'disabled'}><span class="ic">▶️</span><span>Abend fortsetzen<small>${cur ? esc(cur.players.map(p => p.name).join(', ')) + ' · ' + cur.log.length + ' Spiele' : 'kein laufender Abend'}</small></span></button>
       <button class="big" data-act="go" data-v="sstats"><span class="ic">📊</span><span>Statistik</span></button>
-      <button class="big" data-act="go" data-v="ssettings"><span class="ic">⚙️</span><span>Spieleinstellungen<small>Tarife &amp; Laufende</small></span></button>`;
+      <button class="big" data-act="go" data-v="ssettings"><span class="ic">⚙️</span><span>Spieleinstellungen</span></button>`;
   },
   sgame() {
     const g = G('schafkopf').current; if (!g) return '<p class="muted">Kein laufender Abend.</p>';
@@ -380,7 +377,6 @@ const VIEWS = {
     if (!c || !c.log.length) return '<p class="muted" style="margin-top:40px">Noch keine Spiele eingetragen.</p>';
     const cum = c.names.map((_, i) => { let t = 0; return [0, ...c.log.map(d => t += d[i])]; });
     return `<div class="chart" id="chart"><div class="legend">${c.names.map((n, i) => `<span><span class="sw" style="background:${SERIES[i]}"></span>${esc(n)}</span>`).join('')}</div><div id="chartSvg"></div><div class="tip" id="tip"></div></div>
-      <p class="muted">Antippen oder darüberfahren zeigt den Stand nach jedem Spiel.</p>
       <details class="card"><summary style="font-weight:600">Tabelle anzeigen</summary>
       <table class="tab"><tr><th>Spiel</th>${c.names.map(n => `<th>${esc(n)}</th>`).join('')}</tr>
       ${cum[0].map((_, j) => `<tr><td>${j || 'Start'}</td>${cum.map(s => `<td>${eur(s[j], true)}</td>`).join('')}</tr>`).join('')}</table></details>`;
@@ -400,8 +396,7 @@ const VIEWS = {
     const bal = c.names.map((n, i) => ({n, v: c.log.reduce((a, d) => a + d[i], 0)})), pay = [];
     const deb = bal.filter(b => b.v < 0).map(b => ({...b, v: -b.v})).sort((a, b) => b.v - a.v), cre = bal.filter(b => b.v > 0).map(b => ({...b})).sort((a, b) => b.v - a.v);
     for (const d of deb) for (const k of cre) { const m = Math.min(d.v, k.v); if (m > 0) { pay.push([d.n, k.n, m]); d.v -= m; k.v -= m; } }
-    return `<p class="muted" style="margin-top:0">So viel muss gezahlt werden, damit alles aufgeht:</p>
-      ${pay.length ? pay.map(([a, b, m]) => `<div class="card" style="display:flex;align-items:center;gap:10px">
+    return `${pay.length ? pay.map(([a, b, m]) => `<div class="card" style="display:flex;align-items:center;gap:10px">
         <span class="name" style="flex:1">${esc(a)} <span style="color:var(--dim);font-weight:400">→</span> ${esc(b)}</span><span style="font-size:22px;font-weight:800">${eur(m)}</span></div>`).join('') : '<div class="card" style="text-align:center">🤝 Alle sind ausgeglichen – niemand muss zahlen.</div>'}
       <label class="l">Endstand</label><div class="card">${bal.slice().sort((a, b) => b.v - a.v).map(b => `<div class="hist"><span>${esc(b.n)}</span><b class="${b.v > 0 ? 'plus' : b.v < 0 ? 'minus' : ''}">${eur(b.v, true)}</b></div>`).join('')}</div>
       <button class="btn acc" data-act="go" data-v="schart">📈 Verlauf des Abends</button>
@@ -412,34 +407,31 @@ const VIEWS = {
   ssettings() {
     const s = sset();
     const num = (k, l) => `<div class="set"><span>${l}</span><input type="number" inputmode="numeric" data-set="${k}" data-game="schafkopf" value="${s[k]}"></div>`;
-    const tog = (k, l, h) => `<div class="set"><span>${l}<br><small style="color:var(--dim)">${h}</small></span><button class="tog ${s[k] ? 'on' : ''}" data-act="tog" data-k="${k}" data-game="schafkopf"></button></div>`;
-    return `<p class="muted" style="margin-top:0">Alle Beträge in Cent. Änderungen gelten für neue Abende.</p>
-      <label class="l">Tarife</label>
+    const tog = (k, l) => `<div class="set"><span>${l}</span><button class="tog ${s[k] ? 'on' : ''}" data-act="tog" data-k="${k}" data-game="schafkopf"></button></div>`;
+    return `<label class="l" style="margin-top:0">Tarife in Cent</label>
       <div class="card">${num('sau', 'Sauspiel')}${num('solo', 'Solo / Wenz')}${num('ramsch', 'Ramsch')}${num('durch', 'Durchmarsch')}${num('extra', 'Schneider, Schwarz, je Laufender')}</div>
       <label class="l">Laufende zählen ab</label>
       <div class="card">${num('lfSau', 'Sauspiel')}${num('lfSolo', 'Solo')}${num('lfWenz', 'Wenz')}</div>
-      <div class="card">${tog('ramschOn', 'Ramsch', 'Wenn keiner spielt: Verlierer zahlt an alle, je Jungfrau ×2')}${tog('kontra', 'Kontra / Re', 'Jeweils Verdopplung')}</div>
+      <div class="card">${tog('ramschOn', 'Ramsch')}${tog('kontra', 'Kontra / Re')}</div>
       <button class="btn" data-act="defaults" data-game="schafkopf">Standardregeln wiederherstellen</button>`;
   },
   csettings() {
     const s = cset();
     const num = (k, l) => `<div class="set"><span>${l}</span><input type="number" inputmode="numeric" data-set="${k}" data-game="cabo" value="${s[k]}"></div>`;
-    const tog = (k, l, h) => `<div class="set"><span>${l}<br><small style="color:var(--dim)">${h}</small></span><button class="tog ${s[k] ? 'on' : ''}" data-act="tog" data-k="${k}" data-game="cabo"></button></div>`;
-    return `<p class="muted" style="margin-top:0">Änderungen gelten für neue Spiele.</p>
-      <div class="card">${num('limit', 'Punktegrenze')}</div>
-      <p class="muted">📣 Cabo gewonnen: eigene Punkte · Cabo verloren: Punkte ×2</p>
-      <div class="card">${tog('reset', 'Genau auf der Grenze', 'Wer genau die Grenze trifft, fällt auf die Hälfte zurück')}
-      ${tog('kami', '💥 Kamikaze', '12-12-13-13 aufgedeckt = 0 Punkte')}
-      ${tog('joker', '🃏 Zwei Joker', 'Zwei Joker aufgedeckt = 0 Punkte')}</div>
+    const tog = (k, l) => `<div class="set"><span>${l}</span><button class="tog ${s[k] ? 'on' : ''}" data-act="tog" data-k="${k}" data-game="cabo"></button></div>`;
+    return `<div class="card">${num('limit', 'Punktegrenze')}</div>
+      <div class="card">${tog('reset', 'Genau auf der Grenze → Hälfte')}
+      ${tog('kami', '💥 Kamikaze')}
+      ${tog('joker', '🃏 Zwei Joker')}</div>
       <button class="btn" data-act="defaults" data-game="cabo">Standardregeln wiederherstellen</button>`;
   },
   ksetup() {
     const known = allNames(), used = setup.names.map(n => n.trim().toLowerCase());
-    return `${setup.game === 'schafkopf' ? '<p class="muted" style="margin-top:0">Schafkopf wird zu viert gespielt.</p>' : `<label class="l">Anzahl Spieler</label>
+    return `${setup.game === 'schafkopf' ? '' : `<label class="l">Anzahl Spieler</label>
       <div class="seg">${(setup.game === 'wizard' ? [3,4,5,6] : [1,2,3,4,5,6]).map(n => `<button class="${n === setup.n ? 'on' : ''}" data-act="cnt" data-n="${n}">${n}</button>`).join('')}</div>`}
       <label class="l">Namen</label>
       ${setup.names.map((n, i) => `<input class="inp" data-i="${i}" value="${esc(n)}" placeholder="Spieler ${i + 1}" maxlength="14" autocapitalize="words" autocomplete="off">`).join('')}
-      ${Object.keys(known).length ? `<label class="l">Bekannte Spieler (antippen)</label>
+      ${Object.keys(known).length ? `<label class="l">Bekannte Spieler</label>
       <div class="chips">${Object.entries(known).map(([k, n]) => `<button class="chip ${used.includes(k) ? 'used' : ''}" data-act="chip" data-name="${esc(n)}">${esc(n)}</button>`).join('')}</div>` : ''}
       ${setup.game === 'tutto' ? `<label class="l">Karten</label>
       <div class="seg">${[['real', '🃏 Echte Karten'], ['digital', '📱 Digitaler Stapel']].map(([k, l]) => `<button class="${tset().deck === k ? 'on' : ''}" data-act="deckMode" data-v="${k}">${l}</button>`).join('')}</div>` : ''}
@@ -451,7 +443,7 @@ const VIEWS = {
     const set = g.settings, n = g.players.length, res = g.players.map(p => calc(p, set));
     const max = Math.max(...res.map(r => r.total));
     const cell = (pi, c, val, extra = '') => `<button class="cell ${val === undefined ? 'empty' : val === 0 ? 'zero' : ''}" data-act="cell" data-p="${pi}" data-c="${c}">${val === undefined ? '' : val}${extra}</button>`;
-    const row = (c) => `<div class="row" style="--n:${n}"><div class="lab">${c.label}<span class="hint">${c.type === 'fixed' ? '' : ''}</span></div>${g.players.map((p, i) => cell(i, c.id, p.s[c.id])).join('')}</div>`;
+    const row = (c) => `<div class="row" style="--n:${n}"><div class="lab">${c.label}</div>${g.players.map((p, i) => cell(i, c.id, p.s[c.id])).join('')}</div>`;
     const sum = (label, f, cls = 'sum') => `<div class="row ${cls}" style="--n:${n}"><div class="lab">${label}</div>${res.map((r, i) => `<div class="cell">${f(r, i)}</div>`).join('')}</div>`;
     return `<div class="wrap"><div class="sheet">
       <div class="row head" style="--n:${n}"><div class="lab"></div>${g.players.map((p, i) => `<div class="cell ${res[i].total === max && max > 0 ? 'lead' : ''}">${esc(p.name)}</div>`).join('')}</div>
@@ -490,17 +482,15 @@ const VIEWS = {
   ksettings() {
     const s = kset();
     const num = (k, l) => `<div class="set"><span>${l}</span><input type="number" inputmode="numeric" data-set="${k}" value="${s[k]}"></div>`;
-    return `<p class="muted" style="margin-top:0">Änderungen gelten für neue Spiele.</p>
-      <div class="card">${num('bonusThr', 'Bonus ab (oben)')}${num('bonusVal', 'Bonus-Punkte')}${num('fh', 'Full House')}${num('ks', 'Kleine Straße')}${num('gs', 'Große Straße')}${num('kn', 'Kniffel')}</div>
-      <div class="card"><div class="set"><span>Kniffel-Bonus<br><small style="color:var(--dim)">Extra-Punkte für jeden weiteren Kniffel</small></span><button class="tog ${s.kb ? 'on' : ''}" data-act="tog" data-k="kb"></button></div>
+    return `<div class="card">${num('bonusThr', 'Bonus ab (oben)')}${num('bonusVal', 'Bonus-Punkte')}${num('fh', 'Full House')}${num('ks', 'Kleine Straße')}${num('gs', 'Große Straße')}${num('kn', 'Kniffel')}</div>
+      <div class="card"><div class="set"><span>Kniffel-Bonus</span><button class="tog ${s.kb ? 'on' : ''}" data-act="tog" data-k="kb"></button></div>
       ${s.kb ? num('kbVal', 'Punkte pro Bonus') : ''}</div>
       <div class="card"><div class="set"><span>Siegerton</span><button class="tog ${DB.sound ? 'on' : ''}" data-act="tog" data-k="sound"></button></div></div>
       <button class="btn" data-act="defaults" data-game="kniffel">Standardregeln wiederherstellen</button>`;
   },
   tsettings() {
     const s = tset();
-    return `<p class="muted" style="margin-top:0">Änderungen gelten für neue Spiele.</p>
-      <div class="card"><div class="set"><span>Zielpunktzahl</span><input type="number" inputmode="numeric" data-set="target" data-game="tutto" value="${s.target}"></div></div>
+    return `<div class="card"><div class="set"><span>Zielpunktzahl</span><input type="number" inputmode="numeric" data-set="target" data-game="tutto" value="${s.target}"></div></div>
       <button class="btn" data-act="defaults" data-game="tutto">Standardregeln wiederherstellen</button>`;
   },
 };
@@ -518,7 +508,8 @@ const ACT = {
     setup.names[i] = d.name; render();
   },
   start() {
-    const known = allNames(), names = setup.names.map((n, i) => n.trim() || 'Spieler ' + (i + 1)).map(n => known[n.toLowerCase()] || n);
+    if (setup.names.some(n => !n.trim())) return alert('Bitte für alle Spieler einen Namen eintragen.');
+    const known = allNames(), names = setup.names.map(n => n.trim()).map(n => known[n.toLowerCase()] || n);
     if (new Set(names.map(n => n.toLowerCase())).size < names.length) return alert('Jeder Name darf nur einmal vorkommen.');
     const key = setup.game, cur = G(key).current;
     if (cur && !confirm('Es läuft noch ein Spiel. Es wird verworfen – trotzdem neu starten?')) return;
@@ -559,8 +550,9 @@ const ACT = {
     const g = G('tutto').current, pi = +d.p, p = g.players[pi];
     let v = d.v === 'input' ? parseInt($('#ptsInput').value, 10) : +d.v;
     if (isNaN(v)) v = 0;
+    const before = p.total;
     p.total = Math.max(0, p.total + v);
-    p.turns.push(v);
+    p.turns.push(v && p.total - before);
     nextT(g, pi, true);
   },
   undoT(d) {
@@ -592,7 +584,7 @@ const ACT = {
   },
   pmPlayer(d) {
     const g = G('tutto').current, pi = +d.p;
-    $('#modalBox').innerHTML = `<h3>${esc(g.players[pi].name)}: Plus/Minus</h3><p>Tutto geschafft? Bei Erfolg: genau +1000 für ${esc(g.players[pi].name)}, −1000 für alle aktuell führenden Mitspieler (nie unter 0).</p>
+    $('#modalBox').innerHTML = `<h3>${esc(g.players[pi].name)}: Plus/Minus</h3>
       <div class="grid" style="grid-template-columns:1fr 1fr">
         <button class="z" data-act="pmResult" data-p="${pi}" data-v="fail">❌ Niete</button>
         <button data-act="pmResult" data-p="${pi}" data-v="ok">✅ Geschafft</button>
@@ -609,6 +601,7 @@ const ACT = {
   abort() { if (confirm('Spiel wirklich abbrechen? Es wird nicht in die Statistik aufgenommen.')) { G('kniffel').current = null; save(); go('kmenu'); } },
   resetStats(d) {
     const key = d.game || 'kniffel', shared = fs && unsub && DB.group;
+    if (DB.group && !shared) return alert('Keine Verbindung zur Gruppe – zum Zurücksetzen bitte online gehen.');
     if (!confirm(shared ? `Statistik für ALLE in der Gruppe „${DB.group}“ unwiderruflich löschen?` : 'Alle Statistiken unwiderruflich löschen?')) return;
     if (shared) G(key).history.filter(e => e._c === DB.group).forEach(e => fs.deleteDoc(gdoc(key, e)).catch(syncErr));
     G(key).history = []; save(); render();
@@ -617,7 +610,7 @@ const ACT = {
   syncJoin() {
     const c = $('#gcode').value.trim().toLowerCase();
     if (!/^[a-z0-9-]{8,40}$/.test(c)) return alert('Der Code braucht 8–40 Zeichen: Buchstaben a–z, Zahlen und Bindestrich.');
-    DB.group = c; save(); syncStart(); render();
+    DB.group = c; DB.bk = null; save(); syncStart(); render();
   },
   syncShare() {
     const text = `Spielblock – gemeinsame Statistik\nGruppen-Code: ${DB.group}\nApp: ${location.origin + location.pathname}\n→ Gemeinsame Statistik öffnen und Code eingeben.`;
@@ -626,7 +619,32 @@ const ACT = {
   },
   syncLeave() {
     if (!confirm('Gruppe verlassen? Die Statistik bleibt auf diesem Handy, wird aber nicht mehr abgeglichen.')) return;
-    syncStop(); DB.group = null; save(); render();
+    syncStop(); DB.group = null; DB.bk = null; save(); render();
+  },
+  async bkList() {
+    if (!fs || !unsub) return alert('Keine Verbindung zur Gruppe.');
+    const box = $('#modalBox');
+    box.innerHTML = '<h3>🗂️ Backups</h3><p class="muted">Lade …</p>'; $('#modal').classList.add('on');
+    try {
+      const l = (await fs.getDocs(bcol('backups'))).docs.map(d => ({month: d.id, ...d.data()})).sort((a, b) => b.month.localeCompare(a.month));
+      box.innerHTML = `<h3>🗂️ Backups</h3>${l.length ? `<div class="card">${l.map(b => `<div class="hist" style="align-items:center"><span>${monthName(b.month)} · ${b.games} Spiele</span>
+        <button class="chip" data-act="bkRestore" data-m="${b.month}" data-key="${esc(b.key)}" data-parts="${b.parts}">Wiederherstellen</button></div>`).join('')}</div>` : '<p class="muted">Noch kein Backup.</p>'}`;
+    } catch (e) { box.innerHTML = `<h3>🗂️ Backups</h3><p class="minus">${esc(e.code || e.message)}</p>`; }
+  },
+  async bkRestore(d) {
+    if (!confirm(`Backup ${monthName(d.m)} wiederherstellen? Fehlende Spiele kommen für alle zurück.`)) return;
+    try {
+      const parts = await Promise.all(Array.from({length: +d.parts}, (_, i) => fs.getDoc(fs.doc(bcol('backupData'), `${d.m}_${d.key}_${i}`))));
+      const games = JSON.parse(parts.map(x => x.data().data).join(''));
+      let n = 0;
+      for (const k of GAMES) {
+        const ids = new Set(G(k).history.map(e => e.id));
+        for (const e of games[k] || []) if (!ids.has(e.id)) { addGame(k, e); n++; }
+        G(k).history.sort((a, b) => a.date - b.date);
+      }
+      save(); closeModal(); render();
+      alert(n ? `${n} Spiele wiederhergestellt.` : 'Alle Spiele aus dem Backup sind schon da.');
+    } catch (e) { alert('Fehler: ' + (e.code || e.message)); }
   },
   tog(d) { if (d.k === 'sound') DB.sound = !DB.sound; else { const key = d.game || 'kniffel'; G(key).settings[d.k] = !{...DEFS[key], ...G(key).settings}[d.k]; } save(); render(); },
   defaults(d) { const key = d.game || 'kniffel'; if (confirm('Alle Regelwerte auf Standard setzen?')) { G(key).settings = {}; save(); render(); } },
@@ -636,11 +654,10 @@ const ACT = {
     const g = G('cabo').current;
     cr = {caller: -1, zero: {}};
     const zs = ['kami', 'joker'].filter(k => g.settings[k]);
-    $('#modalBox').innerHTML = `<h3>Runde ${g.log.length + 1}</h3><p>Kartensumme je Spieler eintragen (± für Minuspunkte) und den Cabo-Rufer 📣 markieren.</p>
+    $('#modalBox').innerHTML = `<h3>Runde ${g.log.length + 1}</h3>
       ${g.players.map((p, i) => `<div class="crow"><span class="nm">${esc(p.name)}</span>
         <button data-act="cSign" data-p="${i}">±</button><input id="cIn${i}" type="number" inputmode="numeric" placeholder="0">
         <button class="call" data-act="cCall" data-p="${i}">📣</button>${zs.length ? `<button class="zero" data-act="cZero" data-p="${i}">${ZERO[zs[0]]}</button>` : ''}</div>`).join('')}
-      ${zs.length ? `<p style="margin:4px 0 12px;font-size:12px">${zs.map(k => ZERO[k] + ' ' + (k === 'kami' ? 'Kamikaze' : '2 Joker')).join(' · ')} = 0 Punkte${zs.length > 1 ? ' (mehrmals tippen zum Wechseln)' : ''}</p>` : ''}
       <button class="btn ok" data-act="cSubmit">Runde werten</button>`;
     $('#modal').classList.add('on');
   },
@@ -673,7 +690,7 @@ const ACT = {
   sHist(d) { const h = G('schafkopf').history[+d.i]; chartSrc = {names: h.players.map(p => p.name), log: h.log, games: h.games || [], date: h.date, chartBack: 'sevening', payBack: 'sevening'}; go('sevening'); },
   skSet(d) {
     const k = d.k, v = d.v;
-    if (k === 'type') { sk.type = v; sk.pl = []; sk.lf = 0; sk.jf = 0; sk.dm = false; }
+    if (k === 'type') { sk.type = v; sk.pl = []; sk.lf = 0; sk.jf = 0; sk.dm = false; if (v === 'ramsch') sk.ko = sk.re = false; }
     else if (k === 'pl') {
       const i = +v, max = sk.type === 'sau' ? 2 : 1;
       if (sk.pl.includes(i)) sk.pl = sk.pl.filter(x => x !== i); else { sk.pl.push(i); if (sk.pl.length > max) sk.pl.shift(); }
@@ -706,31 +723,28 @@ const ACT = {
   winMenuC() { $('#win').classList.remove('on'); go('cmenu'); },
   winNewC() { $('#win').classList.remove('on'); ACT.newGame({game: 'cabo'}); },
   wBids() { const g = G('wizard').current; wz = {k: 'bids', v: g.bids ? [...g.bids] : g.players.map(() => 0)}; wModal(); },
-  wTricks() { const b = G('wizard').current.bids; wz = {k: 'tricks', v: [...b], adj: b.map(() => 0), bomb: 0}; wModal(); },
+  wTricks() { const g = G('wizard').current, b = g.bids, u = g.undone; wz = u ? {k: 'tricks', v: [...u.tricks], adj: [...u.adj], bomb: u.bomb} : {k: 'tricks', v: [...b], adj: b.map(() => 0), bomb: 0}; wModal(); },
   wStep(d) { const r = G('wizard').current.log.length + 1, i = +d.p; wz.v[i] = Math.max(0, Math.min(r, wz.v[i] + +d.v)); wModal(); },
   wBomb(d) { const r = G('wizard').current.log.length + 1; wz.bomb = Math.max(0, Math.min(r, wz.bomb + +d.v)); wModal(); },
   // Wolke: 0 → +1 → −1 → 0 (Ansage darf nicht unter 0 fallen)
   wCloud(d) { const i = +d.p, b = G('wizard').current.bids[i]; wz.adj[i] = wz.adj[i] === 0 ? 1 : wz.adj[i] === 1 && b > 0 ? -1 : 0; wModal(); },
   wSave() {
     const g = G('wizard').current, s = g.settings;
-    if (wz.k === 'bids') { g.bids = [...wz.v]; save(); closeModal(); return render(); }
+    if (wz.k === 'bids') { g.bids = [...wz.v]; delete g.undone; save(); closeModal(); return render(); }
     const t = wz.v, l = {bids: g.bids, adj: [...wz.adj], bomb: wz.bomb, tricks: [...t]};
     l.pts = g.bids.map((_, i) => wEff(l, i) === t[i] ? s.base + s.per * t[i] : -s.miss * Math.abs(wEff(l, i) - t[i]));
     g.players.forEach((p, i) => { p.total += l.pts[i]; if (wEff(l, i) === t[i]) p.hit++; });
     l.cum = g.players.map(p => p.total);
     g.log.push(l);
-    g.bids = null; save(); closeModal();
+    g.bids = null; delete g.undone; save(); closeModal();
     if (g.log.length >= g.rounds) finishWizard(); else render();
   },
   wUndo() {
     const g = G('wizard').current;
-    if (g.bids) { if (!confirm('Ansagen dieser Runde löschen?')) return; g.bids = null; }
-    else {
-      if (!confirm('Letzte Runde wirklich löschen?')) return;
-      const l = g.log.pop();
-      g.players.forEach((p, i) => { p.total -= l.pts[i]; if (wEff(l, i) === l.tricks[i]) p.hit--; });
-      g.bids = l.bids;
-    }
+    if (!confirm(g.bids ? 'Letzte Runde löschen? Die Ansagen dieser Runde gehen dabei verloren.' : 'Letzte Runde wirklich löschen?')) return;
+    const l = g.log.pop();
+    g.players.forEach((p, i) => { p.total -= l.pts[i]; if (wEff(l, i) === l.tricks[i]) p.hit--; });
+    g.bids = l.bids; g.undone = {tricks: l.tricks, adj: l.adj || l.bids.map(() => 0), bomb: l.bomb || 0};
     save(); render();
   },
   abortW() { if (confirm('Spiel wirklich abbrechen? Es wird nicht in die Statistik aufgenommen.')) { G('wizard').current = null; save(); go('wmenu'); } },
@@ -763,8 +777,8 @@ function wModal() {
   const last = order[n - 1], ban = bids && g.settings.noEven ? r - (sum - wz.v[last]) : -1;
   const msg = !bad ? '' : bids ? `⚠️ Die Ansagen dürfen nicht aufgehen – ${esc(g.players[last].name)} darf nicht ${ban} ansagen.` : `⚠️ Es müssen genau ${total} Stiche sein${wz.bomb ? ` (${r} − ${wz.bomb} 💣)` : ''}.`;
   const eff = i => g.bids[i] + wz.adj[i];
-  $('#modalBox').innerHTML = `<h3>Runde ${r}: ${bids ? 'Ansagen' : 'Stiche'}</h3><p>${bids ? 'Wie viele Stiche sagt jeder an? Reihenfolge ab links vom Geber.' : 'Wie viele Stiche hat jeder bekommen?'}</p>
-    ${sp ? `<div class="crow"><span class="nm">💣 Bomben-Stiche<span class="hint">Stich geht an niemand</span></span>
+  $('#modalBox').innerHTML = `<h3>Runde ${r}: ${bids ? 'Ansagen' : 'Stiche'}</h3>
+    ${sp ? `<div class="crow"><span class="nm">💣 Bomben-Stiche</span>
       <button data-act="wBomb" data-v="-1">−</button><span style="width:44px;text-align:center;font-size:22px;font-weight:800">${wz.bomb}</span><button data-act="wBomb" data-v="1">+</button></div>` : ''}
     ${order.map(i => `<div class="crow"><span class="nm">${esc(g.players[i].name)}${bids ? (i === last && ban >= 0 ? `<span class="hint ${wz.v[i] === ban ? 'minus' : ''}">🚫 nicht ${ban}</span>` : '') : `<span class="hint ${eff(i) === wz.v[i] ? 'plus' : ''}">Ansage ${wz.adj[i] ? `${g.bids[i]} ☁️→ ${eff(i)}` : g.bids[i]}${eff(i) === wz.v[i] ? ' ✓' : ''}</span>`}</span>
       ${sp ? `<button class="${wz.adj[i] ? 'on' : ''}" data-act="wCloud" data-p="${i}" style="font-size:${wz.adj[i] ? 13 : 18}px">☁️${wz.adj[i] > 0 ? '+1' : wz.adj[i] < 0 ? '−1' : ''}</button>` : ''}
@@ -833,17 +847,17 @@ function skModal() {
   const tog = (k, l) => `<button class="${sk[k] ? 'on' : ''}" data-act="skSet" data-k="${k}">${l}</button>`;
   const types = Object.entries(SKT).filter(([k]) => k !== 'ramsch' || s.ramschOn);
   const thr = {sau: s.lfSau, solo: s.lfSolo, wenz: s.lfWenz}[sk.type];
-  const who = sk.type === 'sau' ? 'Wer hat zusammengespielt? (2 antippen)' : sk.type === 'ramsch' ? (sk.dm ? 'Wer hat den Durchmarsch gemacht?' : 'Wer hat verloren (meiste Augen)?') : 'Wer hat das ' + SKT[sk.type] + ' gespielt?';
+  const who = sk.type === 'sau' ? 'Wer hat zusammengespielt?' : sk.type === 'ramsch' ? (sk.dm ? 'Wer hat den Durchmarsch gemacht?' : 'Wer hat verloren (meiste Augen)?') : 'Wer hat das ' + SKT[sk.type] + ' gespielt?';
   $('#modalBox').innerHTML = `<div class="sk"><h3>Spiel ${g.log.length + 1} eintragen</h3>
     <label class="l">Spielart</label>${seg('type', types)}
     ${sk.type === 'ramsch' ? `<div class="seg" style="margin-top:12px">${tog('dm', '🚶 Durchmarsch')}</div>
-    ${sk.dm ? '' : `<label class="l">Jungfrauen – keinen Stich (je ×2)</label>${seg('jf', [0, 1, 2, 3].map(n => [n, n ? n + '× 👰' : 'keine']))}`}` : ''}
+    ${sk.dm ? '' : `<label class="l">Jungfrauen (je ×2)</label>${seg('jf', [0, 1, 2, 3].map(n => [n, n ? n + '× 👰' : 'keine']))}`}` : ''}
     <label class="l">${who}</label><div class="chips">${g.players.map((p, i) => `<button class="chip ${sk.pl.includes(i) ? 'on' : ''}" data-act="skSet" data-k="pl" data-v="${i}">${esc(p.name)}</button>`).join('')}</div>
     ${sk.type !== 'ramsch' ? `<label class="l">Ergebnis für ${sk.type === 'sau' ? 'die Spieler' : 'den Spieler'}</label>${seg('won', [[1, '✅ Gewonnen'], [0, '❌ Verloren']])}
     <label class="l">Zusätze</label><div class="seg">${tog('sn', '✂️ Schneider')}${tog('sw', '⚫ Schwarz')}</div>
-    <label class="l">Laufende (zählen ab ${thr})</label>${seg('lf', [[0, '–'], ...Array.from({length: 9 - thr}, (_, i) => [thr + i, thr + i])])}` : ''}
+    <label class="l">Laufende</label>${seg('lf', [[0, '–'], ...Array.from({length: Math.max(0, (sk.type === 'wenz' ? 4 : 8) - thr + 1)}, (_, i) => [thr + i, thr + i])])}` : ''}
     <label class="l">Geklopft (je ×2)</label>${seg('kl', [0, 1, 2, 3, 4].map(n => [n, n ? n + '× 👊' : 'nein']))}
-    ${s.kontra ? `<label class="l">Kontra / Re (je ×2)</label><div class="seg">${tog('ko', '🗣️ Kontra')}${tog('re', '🔁 Re')}</div>` : ''}
+    ${s.kontra && sk.type !== 'ramsch' ? `<label class="l">Kontra / Re (je ×2)</label><div class="seg">${tog('ko', '🗣️ Kontra')}${tog('re', '🔁 Re')}</div>` : ''}
     <div class="card" style="margin:14px 0 10px;text-align:center">${r ? g.players.map((p, i) => `<div class="hist"><span>${esc(p.name)}</span><b class="${r.d[i] > 0 ? 'plus' : 'minus'}">${eur(r.d[i], true)}</b></div>`).join('') : '<span class="muted">Bitte Spieler auswählen</span>'}</div>
     <button class="btn ok" data-act="skSave" ${r ? '' : 'disabled'}>Spiel speichern</button></div>`;
   $('#modal').classList.add('on');
@@ -894,7 +908,7 @@ function openPicker(pi, cid) {
 function openTuttoEntry(pi) {
   const g = G('tutto').current, p = g.players[pi], active = pi === g.turn;
   const last = p.turns[p.turns.length - 1];
-  $('#modalBox').innerHTML = `<h3>${esc(p.name)}: Punkte eintragen</h3><p>${active ? 'Punktzahl dieses Wurfs (leer lassen = Niete)' : 'Korrektur (z. B. Plus/Minus-Karte) – auch negative Werte möglich'}</p>
+  $('#modalBox').innerHTML = `<h3>${esc(p.name)}: ${active ? 'Punkte eintragen' : 'Korrektur'}</h3>
     <input class="inp" id="ptsInput" type="number" inputmode="numeric" placeholder="Punkte" style="text-align:center;font-size:22px">
     <button class="btn acc" style="margin-top:10px" data-act="submitPts" data-p="${pi}" data-v="input">Eintragen</button>
     ${last !== undefined ? `<button class="btn" style="margin-top:12px" data-act="undoT" data-p="${pi}">Letzten Eintrag rückgängig (${last >= 0 ? '+' : ''}${last})</button>` : ''}`;
@@ -1044,7 +1058,7 @@ function addGame(key, e) { G(key).history.push(e); syncPut(key, e); }
 async function fbInit() {
   if (fs) return fs;
   const [app, auth, store] = await Promise.all(['firebase-app.js', 'firebase-auth.js', 'firebase-firestore.js'].map(f => import(FB_URL + f)));
-  const a = app.initializeApp(FB_CONFIG), au = auth.getAuth(a);
+  const a = app.getApps().length ? app.getApp() : app.initializeApp(FB_CONFIG), au = auth.getAuth(a);
   await new Promise(r => { const off = auth.onAuthStateChanged(au, () => { off(); r(); }); });
   if (!au.currentUser) await auth.signInAnonymously(au);
   fs = {...store, db: store.initializeFirestore(a, {localCache: store.persistentLocalCache()})};
@@ -1071,6 +1085,7 @@ function onSnap(snap) {
     G(k).history = [...(cloud[k] || []), ...rest].sort((a, b) => a.date - b.date);
   }
   sync.state = server ? 'online' : 'offline'; save(); syncShow();
+  if (server && !bkChecked) { bkChecked = true; backupIfDue(); }
 }
 function syncErr(e) {
   console.error(e);
@@ -1080,7 +1095,7 @@ function syncErr(e) {
 function syncShow() { if (/stats$/.test(view) || view === 'sync') render(); }
 async function syncStart() {
   if (!FB_CONFIG || !DB.group) return;
-  sync.state = 'connecting'; syncShow();
+  sync.state = 'connecting'; bkChecked = false; syncShow();
   try {
     await fbInit();
     if (unsub) unsub();
@@ -1088,6 +1103,29 @@ async function syncStart() {
   } catch (e) { syncErr(e); }
 }
 function syncStop() { if (unsub) unsub(); unsub = null; sync.state = 'off'; }
+
+/* ---------- Monatliches Backup ---------- */
+// Backups dürfen laut firestore.rules nur angelegt, nie geändert oder gelöscht werden.
+// Pro Monat gibt es genau ein Backup (Dokument-ID = Monat); der Inhalt liegt in Teilen in backupData.
+const MONTHS = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
+const monthName = m => MONTHS[+m.slice(5, 7) - 1] + ' ' + m.slice(0, 4);
+const bcol = c => fs.collection(fs.db, 'groups', DB.group, c);
+let bkChecked = false;
+async function backupIfDue() {
+  const month = new Date().toISOString().slice(0, 7), meta = fs.doc(bcol('backups'), month);
+  try {
+    if (!(await fs.getDoc(meta)).exists()) {
+      const games = {}; let n = 0;
+      for (const k of GAMES) { games[k] = G(k).history.map(e => ({...e, _c: undefined})); n += games[k].length; }
+      if (!n) return;
+      const json = JSON.stringify(games), key = Math.random().toString(36).slice(2, 10), CH = 400000, parts = Math.ceil(json.length / CH);
+      for (let i = 0; i < parts; i++) await fs.setDoc(fs.doc(bcol('backupData'), `${month}_${key}_${i}`), {data: json.slice(i * CH, (i + 1) * CH)});
+      await fs.setDoc(meta, {date: Date.now(), games: n, parts, key});
+    }
+    DB.bk = month; save(); syncShow();
+  } catch (e) { console.warn('Backup', e); } // z. B. anderes Handy war schneller – dann gibt es das Backup schon
+}
+addEventListener('resize', () => { if (view === 'schart' || view === 'wgame') render(); });
 addEventListener('online', () => { if (DB.group && sync.state !== 'online') syncStart(); });
 
 /* ---------- Start ---------- */
